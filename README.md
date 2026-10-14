@@ -1,142 +1,211 @@
-# 💰 Class & School Cash Management System (Sistem Uang Kas Sekolah)
+# 💰 Sistem Manajemen Uang Kas Sekolah
 
-> **AI Agent Instructions & Development Roadmap**
-
----
-
-## 📌 Deskripsi Proyek
-
-Proyek ini adalah pengembangan **Sistem Informasi Manajemen Uang Kas Sekolah**, dirancang untuk mencatat, mengelola, dan melaporkan keuangan kas kelas/sekolah secara efisien, transparan, dan akuntabel.
-
-**Tujuan Utama AI Agent:**  
-Membangun aplikasi web berbasis Laravel dengan **Role-Based Access Control (RBAC)** untuk 3 peran utama: **Admin/Bendahara Sekolah**, **Bendahara Kelas**, dan **Siswa/Wali Murid**.
+Aplikasi web untuk mencatat, mengelola, dan melaporkan keuangan kas kelas & sekolah secara transparan dan akuntabel. Dibangun dengan **Laravel**, **Tailwind CSS**, dan **Alpine.js**.
 
 ---
 
-## 🛠️ Tech Stack & Tooling
+## 📸 Fitur Utama
 
-| Component         | Technology                      | Description                     |
-| :---------------- | :------------------------------ | :------------------------------ |
-| **Backend**       | PHP 8.x + Laravel (Latest)      | MVC Architecture & Eloquent ORM |
-| **Frontend**      | Laravel Blade + Tailwind CSS    | UI Clean, Modern & Responsive   |
-| **Database**      | MySQL                           | Relational Database Management  |
-| **Interactivity** | Livewire / Alpine.js (Optional) | Smooth AJAX/Interactive UX      |
-
----
-
-## 👥 Role-Based Access Control (RBAC)
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   PERAN & HAK AKSES                     │
-├───────────────────┬─────────────────────────────────────┤
-│ 👑 admin          │ Full Access Master Data & Laporan   │
-│ 🧑‍💼 bendahara_kelas│ Kelola Tagihan & Catat Kas Kelas    │
-│ 👨‍🎓 siswa          │ Cek Tagihan, Riwayat & Upload Bukti │
-└───────────────────┴─────────────────────────────────────┘
-```
+| Fitur | Keterangan |
+|-------|------------|
+| 📊 Dashboard Analytics | KPI saldo, pemasukan/pengeluaran, grafik tren 6 bulan, perbandingan per kelas |
+| 👥 Manajemen Master Data | CRUD Siswa, Kelas, Tahun Ajaran, Kategori Kas |
+| 💵 Tagihan & Pembayaran | Buat tagihan per kelas, catat pembayaran tunai/transfer, verifikasi bukti bayar |
+| 💸 Pencatatan Pengeluaran | Catat pengeluaran kas + upload nota/bukti |
+| 📄 Laporan & Export | Buku mutasi kas dengan saldo berjalan, rekap tunggakan — export ke **Excel & PDF** |
+| 📱 Portal Siswa | Cek tagihan pribadi, upload bukti transfer, lihat transparansi kas kelas |
+| 🔐 Keamanan | Role-Based Access (Admin, Bendahara Kelas, Siswa), Policy/Gate, custom error pages |
 
 ---
 
-## 🗄️ Skema Database (Database Schema)
+## 🛠️ Tech Stack
 
-Tolong buatkan file **Migration** dan **Model** sesuai spesifikasi berikut. Pastikan relasi Eloquent (`hasMany`, `belongsTo`, `hasOne`) terpasang dengan benar.
-
-### 1. Master & Users
-
-- **`users`**: `id`, `name`, `email`, `password`, `role` (`admin`, `bendahara_kelas`, `siswa`), `class_id` (FK to `classes`, nullable), `nisn` (nullable), `created_at`, `updated_at`.
-- **`classes`**: `id`, `class_name` (e.g., "X IPA 1"), `academic_year`, `homeroom_teacher` (wali kelas), `created_at`, `updated_at`.
-
-### 2. Transaksi Kas & Tagihan
-
-- **`cash_categories`**: `id`, `name` (e.g., "Uang Kas Mingguan", "Uang Acara"), `type` (`in`, `out`), `description`, `created_at`, `updated_at`.
-- **`cash_bills`**: `id`, `class_id` (FK), `category_id` (FK), `title`, `amount` (decimal), `due_date`, `created_at`, `updated_at`.
-- **`payments`**: `id`, `cash_bill_id` (FK), `student_id` (FK to `users`), `amount_paid` (decimal), `payment_date`, `status` (`pending`, `verified`, `rejected`), `proof_file` (nullable), `notes`, `verified_by` (FK to `users`, nullable), `created_at`, `updated_at`.
-- **`cash_expenses`**: `id`, `class_id` (FK), `category_id` (FK), `title`, `amount` (decimal), `expense_date`, `proof_file` (nullable), `notes`, `created_by` (FK to `users`), `created_at`, `updated_at`.
+- **Backend:** PHP 8.x + Laravel
+- **Frontend:** Blade + Tailwind CSS + Alpine.js
+- **Database:** MySQL
+- **Export:** Maatwebsite Excel + Barryvdh DomPDF
+- **Charts:** Chart.js (CDN)
 
 ---
 
-## 🎯 Fitur Utama berdasarkan Peran
+## ⚙️ Persyaratan Sistem
 
-### 📊 1. Dashboard & Module Admin (Bendahara Utama / Operator)
+Pastikan komputer kamu sudah terinstal:
 
-- **Dashboard Metrik:** Total pemasukan, pengeluaran, sisa saldo kas sekolah/seluruh kelas, dan grafik tren kas bulanan.
-- **Master Data (CRUD):** Kelola data Akun (`users`), Kelola Kelas (`classes`), Kelola Kategori Kas (`cash_categories`).
-- **Laporan Global:** Rekapitulasi kas seluruh kelas (Bisa diekspor ke PDF/Excel).
+- **PHP** ≥ 8.2 (dengan ekstensi: `zip`, `gd`, `mbstring`, `pdo_mysql`)
+- **Composer** (package manager PHP)
+- **MySQL** (bisa pakai Laragon / XAMPP / MAMP)
+- **Node.js** ≥ 18 + **npm** (untuk compile asset Tailwind CSS)
+- **Git**
 
-### ✍️ 2. Module Bendahara Kelas
-
-- **Dashboard Kelas:** Ringkasan Saldo Kas Kelas, jumlah siswa yang lunas/menunggak.
-- **Kelola Tagihan (Cash Bills):** Membuat tagihan mingguan/bulanan atau kegiatan kelas.
-- **Pencatatan Pemasukan (Payments):**
-    - Input manual pembayaran siswa secara tunai.
-    - Verifikasi bukti pembayaran yang diunggah siswa.
-- **Pencatatan Pengeluaran (Cash Expenses):** Catat pengeluaran kas kelas lengkap dengan upload nota/bukti transaksi.
-- **Laporan Kas Kelas:** Cetak rekap kas bulanan kelas.
-
-### 📱 3. Module Siswa / Orang Tua
-
-- **Dashboard Siswa:** Ringkasan total tagihan aktif & riwayat pembayaran pribadi.
-- **Tagihan Saya:** Melihat riwayat tunggakan kas mingguan.
-- **Upload Bukti Bayar:** Upload foto/file resi transfer jika pembayaran dilakukan via bank/e-wallet.
-- **Transparansi Kas Kelas:** Melihat laporan pemasukan & pengeluaran kas kelas secara terbuka.
+> 💡 **Rekomendasi:** Gunakan [Laragon](https://laragon.org/) di Windows — sudah include PHP, MySQL, dan phpMyAdmin.
 
 ---
 
-## 🤖 AI Implementation Steps (Langkah Pengerjaan)
+## 🚀 Cara Instalasi (Step-by-Step)
 
-> **Instruksi untuk AI Agent:** Kerjakan proyek ini secara bertahap (_step-by-step_). Selesaikan setiap kriteria sebelum beralih ke tahap berikutnya.
+### 1. Clone Repository
 
-- [x] **Tahap 1: Setup Framework & Database**
-    - Setup proyek Laravel baru.
-    - Buat semua file _Migration_ sesuai skema database di atas. Tambahkan foreign key constraint.
-    - Buat semua _Model_ beserta relasi Eloquent (`belongsTo`, `hasMany`).
-    - Buat _Seeder_ untuk data awal (Admin, Bendahara Kelas, Siswa, Kelas, dan Kategori Kas awal).
-
-- [x] **Tahap 2: Autentikasi & Middleware Access Control**
-    - Buat sistem Login & Logout.
-    - Buat `RoleMiddleware` untuk memproteksi endpoint (`/admin/*`, `/bendahara/*`, `/siswa/*`).
-    - Buat Layout Blade responsif (Sidebar & Navbar) yang otomatis menyesuaikan menu berdasarkan peran user.
-
-- [x] **Tahap 3: Modul Master & Admin (CRUD Data)**
-    - Implementasikan Controller & Blade View CRUD `users` (siswa), `classes`, dan `cash_categories`.
-    - Tambahkan modul manajemen Tahun Ajaran (`academic_years`) beserta aktivasi status.
-    - Buat halaman _Dashboard Admin_ dengan komponen card stat ringkasan keuangan.
-
-- [x] **Tahap 4: Modul Transaksi & Kas Kelas (Bendahara)**
-    - Buat fitur pembuatan tagihan kas (`cash_bills`).
-    - Buat antarmuka entri pembayaran (`payments`) & verifikasi bukti bayar siswa.
-    - Buat fitur pencatatan pengeluaran (`cash_expenses`) dengan fitur unggah nota.
-
-- [x] **Tahap 5: Modul Siswa & Transparansi Keuangan**
-    - Buat halaman tagihan pribadi siswa & form upload bukti transaksi.
-    - Buat halaman transparansi kas kelas (melihat pemasukan & pengeluaran kelas).
-
-- [x] **Tahap 6: Reporting & Exporting**
-    - Tambahkan fitur Cetak/Export Laporan Kas (PDF atau Excel).
-    - Poles UI menggunakan Tailwind CSS agar lebih rapi dan intuitif.
-
-- [x] **Tahap 7: Polishing, Security & Optimization**
-    - Audit keamanan rute & kebijakan otorisasi menggunakan Laravel Policy/Gate.
-    - Terapkan Eager Loading (`with()`) pada setiap query Eloquent (N+1 fix).
-    - Buat UI Error Pages kustom (403, 404, 500) sesuai tema Tailwind CSS.
-    - Lengkapi validasi frontend & toast notification untuk kenyamanan UX.
-    - Uji seluruh alur dari awal sampai akhir.
-
----
-
-## 💡 Catatan Khusus untuk AI Agent
-
-1. **Desain UI:** Gunakan Tailwind CSS dengan warna bertema keuangan yang modern (misal: aksen Emerald/Green untuk pemasukan, Rose/Red untuk pengeluaran, dan Indigo/Blue untuk navigasi).
-2. **Validasi Form:** Selalu terapkan validasi request di setiap form controller (`required`, `numeric`, `mimes:jpg,png,pdf` untuk file).
-3. **Keamanan & Scoping:** Pastikan query data bendahara dan siswa hanya menampilkan data yang sesuai dengan `class_id` mereka.
-
+```bash
+git clone https://github.com/ilhampram/KasSekolah.git
+cd KasSekolah
 ```
 
+### 2. Install Dependency PHP
+
+```bash
+composer install
 ```
 
-### 💡 Cara Menggunakan File Ini:
+### 3. Install Dependency Frontend
 
-1. Simpan kode di atas ke dalam file bernama `README.md` di folder root project Laravel Anda.
-2. Ketika mulai menggunakan AI Agent (misal: Cursor / Copilot), Anda cukup instruksikan:
-    > _"Tolong baca file `README.md` dan mulai kerjakan **Tahap 1** terlebih dahulu."_
+```bash
+npm install
+```
+
+### 4. Salin File Environment
+
+```bash
+cp .env.example .env
+```
+
+> Di Windows (CMD), gunakan: `copy .env.example .env`
+
+### 5. Generate Application Key
+
+```bash
+php artisan key:generate
+```
+
+### 6. Konfigurasi Database
+
+Buka file `.env` dan sesuaikan bagian database:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=db_uang_kas_sekolah
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+> ⚠️ Pastikan kamu sudah **membuat database** `db_uang_kas_sekolah` di MySQL/phpMyAdmin terlebih dahulu.
+
+### 7. Jalankan Migrasi & Seeder
+
+```bash
+php artisan migrate --seed
+```
+
+Perintah ini akan membuat semua tabel dan mengisi data awal (akun demo, kelas, kategori kas).
+
+### 8. Buat Symbolic Link untuk Storage
+
+```bash
+php artisan storage:link
+```
+
+### 9. Build Asset Frontend (Tailwind CSS)
+
+```bash
+npm run build
+```
+
+### 10. Jalankan Aplikasi
+
+```bash
+php artisan serve
+```
+
+Buka browser dan akses: **http://localhost:8000**
+
+---
+
+## 🔑 Akun Demo
+
+Setelah menjalankan seeder, kamu bisa login dengan akun berikut:
+
+| Role | Email | Password |
+|------|-------|----------|
+| 👑 Admin / Bendahara Sekolah | `admin@sekolah.test` | `password` |
+| 👨‍🎓 Siswa 1 | `andi@siswa.test` | `password` |
+| 👨‍🎓 Siswa 2 | `citra@siswa.test` | `password` |
+
+---
+
+## 📖 Cara Menggunakan Aplikasi
+
+### 🔹 Sebagai Admin / Bendahara Sekolah
+
+1. **Login** dengan akun admin.
+2. **Dashboard** — Lihat ringkasan saldo, pemasukan, pengeluaran, grafik tren bulanan.
+3. **Master Data** — Kelola Tahun Ajaran, Kelas, Siswa, dan Kategori Kas dari menu sidebar.
+4. **Tagihan Siswa** — Buat tagihan kas per kelas (misal: Kas Bulanan Rp 50.000).
+5. **Kasir & Pembayaran** — Catat pembayaran tunai siswa atau verifikasi bukti transfer yang diupload siswa.
+6. **Transaksi Kas** — Catat pemasukan/pengeluaran kas kelas.
+7. **Laporan Keuangan** — Lihat buku mutasi kas dengan saldo berjalan, rekap tunggakan per siswa, lalu **export ke Excel atau PDF**.
+
+### 🔹 Sebagai Siswa
+
+1. **Login** dengan akun siswa.
+2. **Dashboard** — Lihat ringkasan tagihan pribadi dan saldo kas kelas.
+3. **Histori Pembayaran** — Lihat semua riwayat pembayaran kamu.
+4. **Upload Bukti Transfer** — Jika bayar via transfer bank/e-wallet, upload foto resi agar diverifikasi bendahara.
+5. **Transparansi Kas** — Lihat laporan pemasukan & pengeluaran kas kelas secara terbuka.
+
+---
+
+## 📁 Struktur Folder Penting
+
+```
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── Admin/          # Controller modul admin
+│   │   └── Siswa/          # Controller modul siswa
+│   ├── Models/             # Eloquent models
+│   ├── Policies/           # Authorization policies
+│   └── Exports/            # Export Excel classes
+├── database/
+│   ├── migrations/         # Skema tabel database
+│   └── seeders/            # Data awal (demo)
+├── resources/views/
+│   ├── layouts/            # Layout utama (sidebar, navbar)
+│   ├── admin/              # Views modul admin
+│   ├── siswa/              # Views modul siswa
+│   └── errors/             # Custom error pages (403, 404, 500)
+├── routes/web.php          # Semua route definitions
+└── .env                    # Konfigurasi environment
+```
+
+---
+
+## 👥 Role & Hak Akses
+
+| Role | Hak Akses |
+|------|-----------|
+| **Admin** | Full access: master data, tagihan, pembayaran, pengeluaran, laporan, export |
+| **Bendahara Kelas** | Kelola tagihan & kas di kelas yang ditugaskan |
+| **Siswa** | Lihat tagihan pribadi, upload bukti bayar, lihat transparansi kas |
+
+---
+
+## 🐛 Troubleshooting
+
+| Masalah | Solusi |
+|---------|--------|
+| `SQLSTATE[HY000] [1049] Unknown database` | Buat database `db_uang_kas_sekolah` di phpMyAdmin terlebih dahulu |
+| `Vite manifest not found` | Jalankan `npm run build` terlebih dahulu |
+| `The stream or file ... could not be opened` | Jalankan `php artisan storage:link` |
+| `Class not found` | Jalankan `composer dump-autoload` |
+| Export Excel error | Pastikan ekstensi `ext-zip` aktif di `php.ini` |
+
+---
+
+## 📝 Lisensi
+
+Proyek ini dibuat untuk keperluan edukasi dan tugas sekolah.
+
+---
+
+> Dibuat dengan ❤️ menggunakan Laravel + Tailwind CSS
