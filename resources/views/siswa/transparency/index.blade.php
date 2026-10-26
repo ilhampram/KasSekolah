@@ -157,7 +157,19 @@
                                     {{ $trx->type === 'in' ? '+' : '-' }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    @if($trx->proof_file)
+                                    {{-- ponytail: protect student bank receipts while keeping operational expense invoices publicly transparent --}}
+                                    @if($trx->payment_id)
+                                        @if($trx->payment && $trx->payment->student_id === auth()->id())
+                                            <a href="{{ route('siswa.payments.receipt', $trx->payment_id) }}"
+                                               class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-semibold transition">
+                                                🧾 Kwitansi Saya
+                                            </a>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-100 text-gray-500" title="Bukti transfer bank siswa dilindungi demi privasi">
+                                                🔒 Terverifikasi
+                                            </span>
+                                        @endif
+                                    @elseif($trx->proof_file)
                                         @php
                                             $ext = strtolower(pathinfo($trx->proof_file, PATHINFO_EXTENSION));
                                             $fileUrl = asset('storage/' . $trx->proof_file);

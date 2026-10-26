@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\CashCategory;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreStudentDueRequest extends FormRequest
@@ -14,27 +15,36 @@ class StoreStudentDueRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'       => ['required', 'string', 'max:255'],
-            'category_id' => ['required', 'exists:cash_categories,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'category_id' => [
+                'required',
+                'exists:cash_categories,id',
+                function ($attribute, $value, $fail) {
+                    $cat = CashCategory::find($value);
+                    if ($cat && $cat->type !== 'in') {
+                        $fail('Kategori tagihan kas harus bertipe Pemasukan (in).');
+                    }
+                },
+            ],
             'target_type' => ['required', 'in:single,all'],
-            'class_id'    => ['required_if:target_type,single', 'nullable', 'exists:classes,id'],
-            'amount'      => ['required', 'numeric', 'min:1'],
-            'due_date'    => ['required', 'date'],
+            'class_id' => ['required_if:target_type,single', 'nullable', 'exists:classes,id'],
+            'amount' => ['required', 'numeric', 'min:1'],
+            'due_date' => ['required', 'date'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'title.required'        => 'Judul tagihan wajib diisi.',
+            'title.required' => 'Judul tagihan wajib diisi.',
             'category_id.required' => 'Kategori kas wajib dipilih.',
             'target_type.required' => 'Target kelas wajib dipilih.',
             'class_id.required_if' => 'Kelas harus dipilih jika target adalah satu kelas.',
-            'class_id.exists'      => 'Kelas yang dipilih tidak valid.',
-            'amount.required'      => 'Nominal tagihan wajib diisi.',
-            'amount.numeric'       => 'Nominal tagihan harus berupa angka.',
-            'amount.min'           => 'Nominal minimal Rp 1.',
-            'due_date.required'    => 'Batas waktu (jatuh tempo) wajib diisi.',
+            'class_id.exists' => 'Kelas yang dipilih tidak valid.',
+            'amount.required' => 'Nominal tagihan wajib diisi.',
+            'amount.numeric' => 'Nominal tagihan harus berupa angka.',
+            'amount.min' => 'Nominal minimal Rp 1.',
+            'due_date.required' => 'Batas waktu (jatuh tempo) wajib diisi.',
         ];
     }
 }

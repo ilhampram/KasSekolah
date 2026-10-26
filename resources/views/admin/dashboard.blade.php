@@ -12,10 +12,18 @@
             <h2 class="text-2xl font-black text-gray-800">Selamat Datang, {{ auth()->user()->name }} 👋</h2>
             <p class="text-gray-500 text-sm mt-1">Ringkasan performa keuangan kas sekolah & analitika arus kas.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ route('admin.transactions.create', ['type' => 'out']) }}"
+               class="px-3.5 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm">
+                <span>💸</span> + Catat Pengeluaran
+            </a>
+            <a href="{{ route('admin.transactions.create', ['type' => 'in']) }}"
+               class="px-3.5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+                <span>💰</span> + Catat Pemasukan
+            </a>
             <a href="{{ route('admin.reports.index') }}"
-               class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-sm">
-                <span>📄</span> Buka Laporan Keuangan
+               class="px-3.5 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-sm">
+                <span>📄</span> Laporan Keuangan
             </a>
         </div>
     </div>
@@ -47,8 +55,10 @@
                 Rp {{ number_format($incomeThisMonth, 0, ',', '.') }}
             </p>
             <div class="mt-2 text-xs text-gray-500 flex items-center justify-between pt-2 border-t border-gray-100">
-                <span>Bulan {{ now()->translatedFormat('F Y') }}</span>
-                <span class="font-bold text-emerald-700">Masuk</span>
+                <a href="{{ route('admin.transactions.create', ['type' => 'in']) }}" class="font-bold text-emerald-600 hover:underline">
+                    + Input Pemasukan →
+                </a>
+                <span class="font-medium text-gray-400">{{ now()->translatedFormat('M Y') }}</span>
             </div>
         </div>
 
@@ -62,7 +72,9 @@
                 Rp {{ number_format($expenseThisMonth, 0, ',', '.') }}
             </p>
             <div class="mt-2 text-xs text-gray-500 flex items-center justify-between pt-2 border-t border-gray-100">
-                <span>Total Pengeluaran:</span>
+                <a href="{{ route('admin.transactions.create', ['type' => 'out']) }}" class="font-bold text-rose-600 hover:underline">
+                    + Input Pengeluaran →
+                </a>
                 <span class="font-semibold text-rose-600">Rp {{ number_format($totalExpense, 0, ',', '.') }}</span>
             </div>
         </div>

@@ -79,21 +79,27 @@
                             </td>
                             <td class="px-6 py-4 text-gray-600">{{ $class->homeroom_teacher }}</td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                    {{ $class->students_count }} siswa
-                                </span>
+                                <a href="{{ route('admin.students.index', ['class_id' => $class->id]) }}"
+                                   class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
+                                   title="Klik untuk melihat daftar siswa kelas ini">
+                                    <span>👥</span> {{ $class->students_count }} siswa
+                                </a>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <a href="{{ route('admin.students.index', ['class_id' => $class->id]) }}"
+                                       class="px-2.5 py-1.5 text-xs bg-indigo-50 text-indigo-700 font-semibold rounded-md hover:bg-indigo-100 transition inline-flex items-center gap-1">
+                                        👥 Siswa
+                                    </a>
                                     <a href="{{ route('admin.classes.edit', $class) }}"
-                                       class="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition">
+                                       class="px-2.5 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition">
                                         ✏️ Edit
                                     </a>
                                     <form method="POST" action="{{ route('admin.classes.destroy', $class) }}"
                                           onsubmit="return confirm('Yakin ingin menghapus kelas {{ $class->class_name }}?')">
                                         @csrf @method('DELETE')
                                         <button type="submit"
-                                                class="px-3 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition">
+                                                class="px-2.5 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition">
                                             🗑️ Hapus
                                         </button>
                                     </form>

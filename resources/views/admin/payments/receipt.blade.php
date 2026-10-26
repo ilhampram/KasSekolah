@@ -24,9 +24,13 @@
                         ＋ Entri Kasir Baru
                     </a>
                 @endif
+                <a href="{{ route(auth()->user()->role === 'siswa' ? 'siswa.payments.receipt-pdf' : 'admin.payments.receipt-pdf', $payment) }}"
+                   class="px-3.5 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm">
+                    <span>📥</span> Unduh PDF
+                </a>
                 <button onclick="window.print()"
-                        class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-sm">
-                    <span>🖨️</span> Cetak / Simpan PDF
+                        class="px-3.5 py-2 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition flex items-center gap-1.5 shadow-sm">
+                    <span>🖨️</span> Cetak Langsung
                 </button>
             </div>
         </div>

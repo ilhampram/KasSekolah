@@ -20,6 +20,19 @@
                 </div>
             </div>
 
+            @if(isset($pendingBills) && count($pendingBills) > 0)
+                <div class="mb-5 p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                    <p class="font-bold flex items-center gap-1.5 mb-1 text-amber-900">
+                        <span>⏳</span> Ada Pengajuan Pembayaran Yang Sedang Diproses:
+                    </p>
+                    <ul class="list-disc list-inside space-y-0.5 text-amber-700">
+                        @foreach($pendingBills as $pb)
+                            <li>Tagihan <strong>{{ $pb['bill']->title }}</strong> (Rp {{ number_format($pb['pending'], 0, ',', '.') }}) sedang menunggu persetujuan bendahara.</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @if(count($activeBills) === 0)
                 <div class="p-6 bg-emerald-50 rounded-xl border border-emerald-200 text-center text-emerald-800">
                     <p class="text-3xl mb-2">🎉</p>

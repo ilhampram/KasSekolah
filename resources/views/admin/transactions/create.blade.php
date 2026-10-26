@@ -5,7 +5,7 @@
 
 @section('content')
     <div class="max-w-3xl" x-data="{
-        type: '{{ old('type', 'in') }}',
+        type: '{{ old('type', request('type', 'in')) }}',
         incomeCategories: @js($incomeCategories),
         expenseCategories: @js($expenseCategories),
         get currentCategories() {
@@ -17,7 +17,16 @@
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
-            <h3 class="text-lg font-bold text-gray-800 mb-6">Form Pencatatan Transaksi Kas</h3>
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-bold text-gray-800" x-text="type === 'out' ? 'Form Pencatatan Pengeluaran Kas' : 'Form Pencatatan Pemasukan Kas'">
+                    Form Pencatatan Transaksi Kas
+                </h3>
+                @if(isset($currentBalance))
+                    <div class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700">
+                        Saldo Kas: <strong class="{{ $currentBalance >= 0 ? 'text-emerald-700' : 'text-rose-600' }}">Rp {{ number_format($currentBalance, 0, ',', '.') }}</strong>
+                    </div>
+                @endif
+            </div>
 
             <form method="POST" action="{{ route('admin.transactions.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf

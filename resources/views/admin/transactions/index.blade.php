@@ -10,10 +10,16 @@
             <h2 class="text-xl font-bold text-gray-800">Buku Transaksi Kas</h2>
             <p class="text-sm text-gray-500">Pencatatan seluruh pemasukan dan pengeluaran kas sekolah/kelas.</p>
         </div>
-        <a href="{{ route('admin.transactions.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-            <span>＋</span> Catat Transaksi Baru
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.transactions.create', ['type' => 'out']) }}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-600 text-white text-sm font-semibold rounded-lg hover:bg-rose-700 transition shadow-sm">
+                <span>💸</span> + Catat Pengeluaran
+            </a>
+            <a href="{{ route('admin.transactions.create', ['type' => 'in']) }}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
+                <span>💰</span> + Catat Pemasukan
+            </a>
+        </div>
     </div>
 
     {{-- Stats Cards --}}

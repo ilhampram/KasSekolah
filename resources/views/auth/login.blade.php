@@ -15,15 +15,15 @@
     <form method="POST" action="{{ route('login') }}" class="space-y-5">
         @csrf
 
-        {{-- Email --}}
+        {{-- Email or NISN --}}
         <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
+            <label for="login" class="block text-sm font-medium text-gray-700 mb-1">Email atau NISN</label>
+            <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus
                    class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm
                           focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition
-                          @error('email') border-red-400 @enderror"
-                   placeholder="email@sekolah.test">
-            @error('email')
+                          @error('login') border-red-400 @enderror"
+                   placeholder="email@sekolah.test atau 0012345001">
+            @error('login')
                 <p class="mt-1 text-xs text-red-500">{{ $message }}</p>
             @enderror
         </div>

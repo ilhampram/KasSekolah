@@ -9,7 +9,6 @@ use App\Models\CashBill;
 use App\Models\CashCategory;
 use App\Models\CashTransaction;
 use App\Models\SchoolClass;
-use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,12 +18,15 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        $isBendahara = $user->isBendaharaKelas();
+
         $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate   = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
-        $classId   = $request->input('class_id');
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $classId = $isBendahara ? (string) $user->class_id : $request->input('class_id');
         $categoryId = $request->input('category_id');
-        $type      = $request->input('type');
-        $tab       = $request->input('tab', 'transactions'); // 'transactions' or 'dues'
+        $type = $request->input('type');
+        $tab = $request->input('tab', 'transactions'); // 'transactions' or 'dues'
 
         // ─── 1. Rekapitulasi Kas (Saldo Awal, Mutasi, Saldo Akhir) ─
         $summary = $this->calculateSummary($startDate, $endDate, $classId, $categoryId);
@@ -42,7 +44,9 @@ class ReportController extends Controller
         // ─── 3. Rekapitulasi Tagihan & Tunggakan Siswa ─────────────
         $duesData = $this->getStudentDuesData($classId, $categoryId);
 
-        $classes    = SchoolClass::orderBy('class_name')->get();
+        $classes = $isBendahara
+            ? SchoolClass::where('id', $user->class_id)->get()
+            : SchoolClass::orderBy('class_name')->get();
         $categories = CashCategory::orderBy('type')->orderBy('name')->get();
 
         return view('admin.reports.index', compact(
@@ -62,11 +66,12 @@ class ReportController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $startDate  = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate    = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
-        $classId    = $request->input('class_id');
+        $user = $request->user();
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $classId = $user->isBendaharaKelas() ? (string) $user->class_id : $request->input('class_id');
         $categoryId = $request->input('category_id');
-        $type       = $request->input('type');
+        $type = $request->input('type');
 
         $summary = $this->calculateSummary($startDate, $endDate, $classId, $categoryId);
         $transactions = $this->getTransactionsWithRunningBalance(
@@ -79,27 +84,28 @@ class ReportController extends Controller
         );
 
         $selectedClass = $classId ? SchoolClass::find($classId) : null;
-        $selectedCat   = $categoryId ? CashCategory::find($categoryId) : null;
+        $selectedCat = $categoryId ? CashCategory::find($categoryId) : null;
 
         $filter = [
             'start_date' => $startDate,
-            'end_date'   => $endDate,
+            'end_date' => $endDate,
             'class_name' => $selectedClass?->class_name ?? 'Semua Kelas',
-            'category'   => $selectedCat?->name ?? 'Semua Kategori',
+            'category' => $selectedCat?->name ?? 'Semua Kategori',
         ];
 
-        $filename = 'Laporan_Kas_Sekolah_' . date('Ymd_His') . '.xlsx';
+        $filename = 'Laporan_Kas_Sekolah_'.date('Ymd_His').'.xlsx';
 
         return Excel::download(new CashTransactionExport($transactions, $summary, $filter), $filename);
     }
 
     public function exportPdf(Request $request)
     {
-        $startDate  = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
-        $endDate    = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
-        $classId    = $request->input('class_id');
+        $user = $request->user();
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        $classId = $user->isBendaharaKelas() ? (string) $user->class_id : $request->input('class_id');
         $categoryId = $request->input('category_id');
-        $type       = $request->input('type');
+        $type = $request->input('type');
 
         $summary = $this->calculateSummary($startDate, $endDate, $classId, $categoryId);
         $transactions = $this->getTransactionsWithRunningBalance(
@@ -112,68 +118,70 @@ class ReportController extends Controller
         );
 
         $selectedClass = $classId ? SchoolClass::find($classId) : null;
-        $selectedCat   = $categoryId ? CashCategory::find($categoryId) : null;
+        $selectedCat = $categoryId ? CashCategory::find($categoryId) : null;
 
         $filter = [
             'start_date' => $startDate,
-            'end_date'   => $endDate,
+            'end_date' => $endDate,
             'class_name' => $selectedClass?->class_name ?? 'Semua Kelas',
-            'category'   => $selectedCat?->name ?? 'Semua Kategori',
+            'category' => $selectedCat?->name ?? 'Semua Kategori',
         ];
 
         $pdf = Pdf::loadView('admin.reports.pdf.cash_transactions', [
             'transactions' => $transactions,
-            'summary'      => $summary,
-            'filter'       => $filter,
+            'summary' => $summary,
+            'filter' => $filter,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download('Laporan_Kas_Sekolah_' . date('Ymd_His') . '.pdf');
+        return $pdf->download('Laporan_Kas_Sekolah_'.date('Ymd_His').'.pdf');
     }
 
     public function exportDuesExcel(Request $request)
     {
-        $classId    = $request->input('class_id');
+        $user = $request->user();
+        $classId = $user->isBendaharaKelas() ? (string) $user->class_id : $request->input('class_id');
         $categoryId = $request->input('category_id');
 
         $duesData = $this->getStudentDuesData($classId, $categoryId);
 
         $selectedClass = $classId ? SchoolClass::find($classId) : null;
-        $selectedCat   = $categoryId ? CashCategory::find($categoryId) : null;
+        $selectedCat = $categoryId ? CashCategory::find($categoryId) : null;
 
         $filter = [
             'class_name' => $selectedClass?->class_name ?? 'Semua Kelas',
-            'category'   => $selectedCat?->name ?? 'Semua Kategori',
+            'category' => $selectedCat?->name ?? 'Semua Kategori',
             'generated_at' => now()->format('d/m/Y H:i'),
         ];
 
-        $filename = 'Rekap_Tunggakan_Siswa_' . date('Ymd_His') . '.xlsx';
+        $filename = 'Rekap_Tunggakan_Siswa_'.date('Ymd_His').'.xlsx';
 
         return Excel::download(new StudentDuesRecapExport($duesData['items'], $duesData['summary'], $filter), $filename);
     }
 
     public function exportDuesPdf(Request $request)
     {
-        $classId    = $request->input('class_id');
+        $user = $request->user();
+        $classId = $user->isBendaharaKelas() ? (string) $user->class_id : $request->input('class_id');
         $categoryId = $request->input('category_id');
 
         $duesData = $this->getStudentDuesData($classId, $categoryId);
 
         $selectedClass = $classId ? SchoolClass::find($classId) : null;
-        $selectedCat   = $categoryId ? CashCategory::find($categoryId) : null;
+        $selectedCat = $categoryId ? CashCategory::find($categoryId) : null;
 
         $filter = [
             'class_name' => $selectedClass?->class_name ?? 'Semua Kelas',
-            'category'   => $selectedCat?->name ?? 'Semua Kategori',
+            'category' => $selectedCat?->name ?? 'Semua Kategori',
             'generated_at' => now()->format('d/m/Y H:i'),
         ];
 
         $pdf = Pdf::loadView('admin.reports.pdf.student_dues', [
             'duesData' => $duesData['items'],
-            'summary'  => $duesData['summary'],
-            'filter'   => $filter,
+            'summary' => $duesData['summary'],
+            'filter' => $filter,
         ])->setPaper('a4', 'portrait');
 
-        return $pdf->download('Rekap_Tunggakan_Siswa_' . date('Ymd_His') . '.pdf');
+        return $pdf->download('Rekap_Tunggakan_Siswa_'.date('Ymd_His').'.pdf');
     }
 
     // ─── Calculation Helpers ───────────────────────────────────
@@ -193,12 +201,12 @@ class ReportController extends Controller
             $priorOutQuery->where('category_id', $categoryId);
         }
 
-        $priorIn  = (float) $priorInQuery->sum('amount');
+        $priorIn = (float) $priorInQuery->sum('amount');
         $priorOut = (float) $priorOutQuery->sum('amount');
         $saldoAwal = $priorIn - $priorOut;
 
         // Mutasi Dalam Periode
-        $inQuery  = CashTransaction::income()->whereBetween('transaction_date', [$startDate, $endDate]);
+        $inQuery = CashTransaction::income()->whereBetween('transaction_date', [$startDate, $endDate]);
         $outQuery = CashTransaction::expense()->whereBetween('transaction_date', [$startDate, $endDate]);
 
         if ($classId) {
@@ -210,15 +218,15 @@ class ReportController extends Controller
             $outQuery->where('category_id', $categoryId);
         }
 
-        $mutasiMasuk  = (float) $inQuery->sum('amount');
+        $mutasiMasuk = (float) $inQuery->sum('amount');
         $mutasiKeluar = (float) $outQuery->sum('amount');
-        $saldoAkhir   = $saldoAwal + $mutasiMasuk - $mutasiKeluar;
+        $saldoAkhir = $saldoAwal + $mutasiMasuk - $mutasiKeluar;
 
         return [
-            'saldo_awal'    => $saldoAwal,
-            'mutasi_masuk'  => $mutasiMasuk,
+            'saldo_awal' => $saldoAwal,
+            'mutasi_masuk' => $mutasiMasuk,
             'mutasi_keluar' => $mutasiKeluar,
-            'saldo_akhir'   => $saldoAkhir,
+            'saldo_akhir' => $saldoAkhir,
         ];
     }
 
@@ -258,7 +266,7 @@ class ReportController extends Controller
             }
 
             $result[] = [
-                'model'           => $trx,
+                'model' => $trx,
                 'running_balance' => $running,
             ];
         }
@@ -268,7 +276,7 @@ class ReportController extends Controller
 
     private function getStudentDuesData(?string $classId, ?string $categoryId): array
     {
-        $billsQuery = CashBill::with(['schoolClass.students', 'category']);
+        $billsQuery = CashBill::with(['schoolClass.students', 'category', 'payments']);
 
         if ($classId) {
             $billsQuery->where('class_id', $classId);
@@ -281,10 +289,10 @@ class ReportController extends Controller
 
         $items = [];
         $totalTarget = 0;
-        $totalPaid   = 0;
-        $totalDebt   = 0;
-        $lunasCount  = 0;
-        $belumCount  = 0;
+        $totalPaid = 0;
+        $totalDebt = 0;
+        $lunasCount = 0;
+        $belumCount = 0;
 
         foreach ($bills as $bill) {
             $students = $bill->schoolClass ? $bill->schoolClass->students : collect();
@@ -293,8 +301,8 @@ class ReportController extends Controller
                 $status = $bill->studentPaymentStatus($student->id);
 
                 $totalTarget += (float) $bill->amount;
-                $totalPaid   += $status['paid'];
-                $totalDebt   += $status['remaining'];
+                $totalPaid += $status['paid'];
+                $totalDebt += $status['remaining'];
 
                 if ($status['status'] === 'lunas') {
                     $lunasCount++;
@@ -304,26 +312,26 @@ class ReportController extends Controller
 
                 $items[] = [
                     'student_name' => $student->name,
-                    'nisn'         => $student->nisn ?? '-',
-                    'class_name'   => $bill->schoolClass->class_name ?? '-',
-                    'bill_title'   => $bill->title,
-                    'category'     => $bill->category->name ?? '-',
-                    'amount'       => (float) $bill->amount,
-                    'paid'         => $status['paid'],
-                    'remaining'    => $status['remaining'],
-                    'status'       => $status['status'],
+                    'nisn' => $student->nisn ?? '-',
+                    'class_name' => $bill->schoolClass->class_name ?? '-',
+                    'bill_title' => $bill->title,
+                    'category' => $bill->category->name ?? '-',
+                    'amount' => (float) $bill->amount,
+                    'paid' => $status['paid'],
+                    'remaining' => $status['remaining'],
+                    'status' => $status['status'],
                 ];
             }
         }
 
         return [
-            'items'   => $items,
+            'items' => $items,
             'summary' => [
                 'total_target' => $totalTarget,
-                'total_paid'   => $totalPaid,
-                'total_debt'   => $totalDebt,
-                'lunas_count'  => $lunasCount,
-                'belum_count'  => $belumCount,
+                'total_paid' => $totalPaid,
+                'total_debt' => $totalDebt,
+                'lunas_count' => $lunasCount,
+                'belum_count' => $belumCount,
             ],
         ];
     }

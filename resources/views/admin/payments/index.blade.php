@@ -1,18 +1,49 @@
 @extends('layouts.app')
 
-@section('title', 'Kasir & Pembayaran')
-@section('header', 'Kasir & Riwayat Pembayaran')
+@section('title', 'Verifikasi & Riwayat Pembayaran')
+@section('header', 'Verifikasi & Riwayat Pembayaran')
 
 @section('content')
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-            <h2 class="text-xl font-bold text-gray-800">Kasir & Riwayat Pembayaran Siswa</h2>
+            <h2 class="text-xl font-bold text-gray-800">Verifikasi & Riwayat Pembayaran</h2>
             <p class="text-sm text-gray-500">Pencatatan pembayaran kas siswa secara tunai/transfer & verifikasi bukti transfer.</p>
         </div>
-        <a href="{{ route('admin.payments.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition">
-            <span>💳</span> Buka Entri Kasir Baru
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.dues.index') }}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-semibold rounded-lg hover:bg-indigo-100 transition">
+                <span>📋</span> Tagihan Kelas
+            </a>
+            <a href="{{ route('admin.payments.create') }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition shadow-sm">
+                <span>💳</span> + Entri Kasir Baru
+            </a>
+        </div>
+    </div>
+
+    {{-- Quick Status Filter Pills --}}
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+        <a href="{{ route('admin.payments.index') }}"
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition {{ !request('status') ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50' }}">
+            Semua Riwayat
+        </a>
+        <a href="{{ route('admin.payments.index', ['status' => 'pending']) }}"
+           class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition {{ request('status') === 'pending' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-amber-700 border border-amber-200 hover:bg-amber-50' }}">
+            <span>⏳</span> Perlu Verifikasi
+            @if($pendingCount > 0)
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-black {{ request('status') === 'pending' ? 'bg-white text-amber-700' : 'bg-amber-100 text-amber-800' }}">
+                    {{ $pendingCount }}
+                </span>
+            @endif
+        </a>
+        <a href="{{ route('admin.payments.index', ['status' => 'verified']) }}"
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition {{ request('status') === 'verified' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50' }}">
+            ✓ Terverifikasi
+        </a>
+        <a href="{{ route('admin.payments.index', ['status' => 'rejected']) }}"
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition {{ request('status') === 'rejected' ? 'bg-rose-600 text-white shadow-sm' : 'bg-white text-rose-700 border border-rose-200 hover:bg-rose-50' }}">
+            ✕ Ditolak
         </a>
     </div>
 

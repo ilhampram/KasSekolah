@@ -5,15 +5,63 @@
 
 @section('content')
     {{-- Header --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-            <h2 class="text-xl font-bold text-gray-800">Daftar Siswa</h2>
-            <p class="text-sm text-gray-500">Kelola data siswa, assignment kelas, dan reset password.</p>
+    <div x-data="{ showImport: false }" class="mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Daftar Siswa</h2>
+                <p class="text-sm text-gray-500">Kelola data siswa, assignment kelas, dan reset password.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" @click="showImport = !showImport"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-300 text-sm font-semibold rounded-lg hover:bg-emerald-100 transition">
+                    <span>📥</span> Import Excel / CSV
+                </button>
+                <a href="{{ route('admin.students.create') }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
+                    <span>＋</span> Tambah Siswa
+                </a>
+            </div>
         </div>
-        <a href="{{ route('admin.students.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition">
-            <span>＋</span> Tambah Siswa
-        </a>
+
+        {{-- Import Box --}}
+        <div x-show="showImport" x-transition class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-5 mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="font-bold text-emerald-900 text-sm">Upload File Excel / CSV Siswa</h3>
+                    <p class="text-xs text-emerald-700">Mendukung file <strong>.xlsx, .xls, .csv</strong>. Kolom: <code>Nama Siswa, NISN, Email (opsional)</code>.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('admin.students.template', ['format' => 'xlsx']) }}"
+                       class="text-xs px-2.5 py-1.5 bg-emerald-700 text-white font-semibold rounded-lg hover:bg-emerald-800 transition flex items-center gap-1 shadow-sm">
+                        📊 Unduh Template Excel (.xlsx)
+                    </a>
+                    <a href="{{ route('admin.students.template', ['format' => 'csv']) }}"
+                       class="text-xs text-emerald-800 underline hover:text-emerald-950 font-medium">
+                        (atau .csv)
+                    </a>
+                </div>
+            </div>
+
+            <form action="{{ route('admin.students.import') }}" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-3">
+                @csrf
+                @if(!auth()->user()->isBendaharaKelas())
+                    <select name="class_id" required class="w-full sm:w-56 rounded-lg border-gray-300 text-sm px-3 py-2 border bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="">Pilih Kelas Tujuan...</option>
+                        @foreach($classes as $c)
+                            <option value="{{ $c->id }}">{{ $c->class_name }}</option>
+                        @endforeach
+                    </select>
+                @endif
+
+                <input type="file" name="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" required
+                       class="w-full sm:flex-1 text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
+
+                <button type="submit"
+                        class="w-full sm:w-auto px-5 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition">
+                    Mulai Impor
+                </button>
+            </form>
+        </div>
     </div>
 
     {{-- Filter & Search --}}
@@ -45,6 +93,21 @@
             @endif
         </form>
     </div>
+
+    {{-- Active Class Filter Alert --}}
+    @if(request('class_id'))
+        @php
+            $activeClass = $classes->firstWhere('id', request('class_id'));
+        @endphp
+        @if($activeClass)
+            <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center justify-between">
+                <span>Filter aktif: Menampilkan siswa kelas <strong>{{ $activeClass->class_name }}</strong> (Total: {{ $students->total() }} siswa)</span>
+                <a href="{{ route('admin.students.index') }}" class="font-bold underline text-blue-900 hover:text-blue-950">
+                    ✕ Tampilkan Semua Siswa
+                </a>
+            </div>
+        @endif
+    @endif
 
     {{-- Table --}}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

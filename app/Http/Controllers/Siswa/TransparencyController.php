@@ -17,7 +17,7 @@ class TransparencyController extends Controller
 
         $scope = $request->input('scope', 'class'); // 'class' or 'all'
 
-        $query = CashTransaction::with(['category', 'schoolClass', 'creator']);
+        $query = CashTransaction::with(['category', 'schoolClass', 'creator', 'payment']);
 
         if ($scope === 'class' && $classId) {
             $query->where('class_id', $classId);
@@ -26,7 +26,7 @@ class TransparencyController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('transaction_number', 'like', "%{$search}%");
+                    ->orWhere('transaction_number', 'like', "%{$search}%");
             });
         }
 
@@ -47,9 +47,9 @@ class TransparencyController extends Controller
         }
 
         $transactions = $query->orderByDesc('transaction_date')
-                              ->orderByDesc('id')
-                              ->paginate(15)
-                              ->withQueryString();
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
 
         // Calculate summary for selected scope
         $statsQuery = CashTransaction::query();
@@ -57,9 +57,9 @@ class TransparencyController extends Controller
             $statsQuery->where('class_id', $classId);
         }
 
-        $totalIncome  = (float) (clone $statsQuery)->where('type', 'in')->sum('amount');
+        $totalIncome = (float) (clone $statsQuery)->where('type', 'in')->sum('amount');
         $totalExpense = (float) (clone $statsQuery)->where('type', 'out')->sum('amount');
-        $balance      = $totalIncome - $totalExpense;
+        $balance = $totalIncome - $totalExpense;
 
         $categories = CashCategory::orderBy('type')->orderBy('name')->get();
 

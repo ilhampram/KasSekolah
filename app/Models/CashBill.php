@@ -22,7 +22,7 @@ class CashBill extends Model
     protected function casts(): array
     {
         return [
-            'amount'   => 'decimal:2',
+            'amount' => 'decimal:2',
             'due_date' => 'date',
         ];
     }
@@ -74,10 +74,18 @@ class CashBill extends Model
                 ->where('student_id', $studentId)
                 ->where('status', 'verified')
                 ->sum('amount_paid');
+            $pending = (float) $this->payments
+                ->where('student_id', $studentId)
+                ->where('status', 'pending')
+                ->sum('amount_paid');
         } else {
             $paid = (float) $this->payments()
                 ->where('student_id', $studentId)
                 ->where('status', 'verified')
+                ->sum('amount_paid');
+            $pending = (float) $this->payments()
+                ->where('student_id', $studentId)
+                ->where('status', 'pending')
                 ->sum('amount_paid');
         }
 
@@ -92,9 +100,10 @@ class CashBill extends Model
         }
 
         return [
-            'paid'      => $paid,
+            'paid' => $paid,
+            'pending' => $pending,
             'remaining' => $remaining,
-            'status'    => $status,
+            'status' => $status,
         ];
     }
 }

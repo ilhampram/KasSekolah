@@ -16,9 +16,13 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <button type="button" onclick="copyWhatsAppRecap()"
+                    class="px-3.5 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-sm">
+                <span>📲</span> Salin Rekap WA
+            </button>
             <a href="{{ route('admin.payments.create', ['bill_id' => $bill->id]) }}"
-               class="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 transition flex items-center gap-1.5">
-                <span>🧾</span> Buka Kasir Pembayaran
+               class="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition flex items-center gap-1.5">
+                <span>🧾</span> Kasir Pembayaran
             </a>
             <a href="{{ route('admin.dues.edit', $bill) }}"
                class="px-3 py-2 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100 transition">
@@ -120,14 +124,24 @@
                                 Rp {{ number_format($statusData['remaining'], 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 text-right">
-                                @if($statusData['remaining'] > 0)
-                                    <a href="{{ route('admin.payments.create', ['bill_id' => $bill->id, 'student_id' => $student->id]) }}"
-                                       class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
-                                        <span>💳</span> Bayar Kasir
-                                    </a>
-                                @else
-                                    <span class="text-xs text-emerald-600 font-semibold">Tuntas</span>
-                                @endif
+                                <div class="flex items-center justify-end gap-1.5">
+                                    @if($statusData['remaining'] > 0)
+                                        @php
+                                            $waStudentMsg = "Halo {$student->name}, ini pengingat dari Bendahara Kelas {$bill->schoolClass->class_name} untuk pembayaran iuran *{$bill->title}*. Sisa tagihan: *Rp " . number_format($statusData['remaining'], 0, ',', '.') . "*. Batas waktu {$bill->due_date->format('d/m/Y')}. Mohon segera dituntaskan ya. Terima kasih! 🙏";
+                                        @endphp
+                                        <a href="https://api.whatsapp.com/send?text={{ rawurlencode($waStudentMsg) }}" target="_blank"
+                                           class="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-100 transition flex items-center gap-1"
+                                           title="Kirim Pengingat WhatsApp ke Siswa">
+                                            <span>📲</span> WA
+                                        </a>
+                                        <a href="{{ route('admin.payments.create', ['bill_id' => $bill->id, 'student_id' => $student->id]) }}"
+                                           class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
+                                            <span>💳</span> Bayar
+                                        </a>
+                                    @else
+                                        <span class="text-xs text-emerald-600 font-semibold">Tuntas</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -196,4 +210,47 @@
             </table>
         </div>
     </div>
+
+    {{-- Textarea & Script untuk Broadcast WhatsApp --}}
+    @php
+        $unpaidLines = [];
+        foreach ($students as $s) {
+            $st = $studentStatuses[$s->id] ?? null;
+            if ($st && $st['remaining'] > 0) {
+                $unpaidLines[] = "- {$s->name} (Sisa: Rp " . number_format($st['remaining'], 0, ',', '.') . ")";
+            }
+        }
+        $unpaidSection = count($unpaidLines) > 0
+            ? "*Daftar Siswa Belum Lunas:*\n" . implode("\n", $unpaidLines) . "\n\n"
+            : "Alhamdulillah seluruh siswa sudah LUNAS! 🎉\n\n";
+
+        $broadcastMsg = "*📢 PENGUMUMAN IURAN KAS KELAS {$bill->schoolClass->class_name}*\n\n"
+            . "Halo teman-teman! Berikut informasi tagihan kas:\n"
+            . "📌 *Tagihan:* {$bill->title}\n"
+            . "💵 *Nominal:* Rp " . number_format($bill->amount, 0, ',', '.') . "\n"
+            . "⏰ *Jatuh Tempo:* " . $bill->due_date->format('d M Y') . "\n\n"
+            . "📊 *Status Pembayaran Kelas:*\n"
+            . "✅ Lunas: {$totalLunas} Siswa\n"
+            . "⏳ Belum Lunas: " . ($totalBelum + $totalCicilan) . " Siswa\n\n"
+            . $unpaidSection
+            . "Mohon bagi yang belum agar segera menyetorkan iuran kepada Bendahara Kelas. Terima kasih! 🙏";
+    @endphp
+    <textarea id="wa-broadcast-text" class="hidden">{{ $broadcastMsg }}</textarea>
+
+    <script>
+        function copyWhatsAppRecap() {
+            const textarea = document.getElementById('wa-broadcast-text');
+            if (!textarea) return;
+
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                alert('✓ Format pengumuman WhatsApp berhasil disalin ke clipboard! Silakan paste (Ctrl+V) langsung ke grup WhatsApp kelas.');
+            }).catch(() => {
+                textarea.classList.remove('hidden');
+                textarea.select();
+                document.execCommand('copy');
+                textarea.classList.add('hidden');
+                alert('✓ Format pengumuman WhatsApp berhasil disalin ke clipboard!');
+            });
+        }
+    </script>
 @endsection

@@ -27,27 +27,19 @@
         <nav class="mt-4 flex flex-col gap-1 px-3">
             @auth
                 @if(auth()->user()->role === 'admin' || auth()->user()->role === 'bendahara_kelas')
-                    {{-- Admin / Bendahara Menu --}}
+                    {{-- Nav Header 1: Operasional Kas --}}
+                    <div class="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+                        Keuangan & Kas
+                    </div>
+
                     <x-sidebar-link href="{{ route('admin.dashboard') }}" icon="📊" :active="request()->routeIs('admin.dashboard')">
                         Dashboard
                     </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.academic-years.index') }}" icon="📅" :active="request()->routeIs('admin.academic-years.*')">
-                        Tahun Ajaran
-                    </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.classes.index') }}" icon="🏫" :active="request()->routeIs('admin.classes.*')">
-                        Master Kelas
-                    </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.students.index') }}" icon="👥" :active="request()->routeIs('admin.students.*')">
-                        Master Siswa
-                    </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.categories.index') }}" icon="📂" :active="request()->routeIs('admin.categories.*')">
-                        Kategori Kas
-                    </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.dues.index') }}" icon="💵" :active="request()->routeIs('admin.dues.*') || request()->routeIs('admin.bills.*')">
+                    <x-sidebar-link href="{{ route('admin.dues.index') }}" icon="💵" :active="request()->routeIs('admin.dues.*')">
                         Tagihan Siswa
                     </x-sidebar-link>
-                    <x-sidebar-link href="{{ route('admin.payments.index') }}" icon="🧾" :active="request()->routeIs('admin.payments.*')">
-                        Kasir & Pembayaran
+                    <x-sidebar-link href="{{ route('admin.payments.index') }}" icon="🧾" :active="request()->routeIs('admin.payments.*')" :badge="$pendingPaymentsCount ?? 0">
+                        Verifikasi Bayar
                     </x-sidebar-link>
                     <x-sidebar-link href="{{ route('admin.transactions.index') }}" icon="💳" :active="request()->routeIs('admin.transactions.*')">
                         Transaksi Kas
@@ -55,6 +47,27 @@
                     <x-sidebar-link href="{{ route('admin.reports.index') }}" icon="📄" :active="request()->routeIs('admin.reports.*')">
                         Laporan Keuangan
                     </x-sidebar-link>
+
+                    {{-- Nav Header 2: Master Data --}}
+                    <div class="px-4 pt-4 pb-1 text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+                        Master Data
+                    </div>
+
+                    <x-sidebar-link href="{{ route('admin.students.index') }}" icon="👥" :active="request()->routeIs('admin.students.*')">
+                        Data Siswa
+                    </x-sidebar-link>
+
+                    @if(auth()->user()->role === 'admin')
+                    <x-sidebar-link href="{{ route('admin.categories.index') }}" icon="📂" :active="request()->routeIs('admin.categories.*')">
+                        Kategori Kas
+                    </x-sidebar-link>
+                    <x-sidebar-link href="{{ route('admin.classes.index') }}" icon="🏫" :active="request()->routeIs('admin.classes.*')">
+                        Master Kelas
+                    </x-sidebar-link>
+                    <x-sidebar-link href="{{ route('admin.academic-years.index') }}" icon="📅" :active="request()->routeIs('admin.academic-years.*')">
+                        Tahun Ajaran
+                    </x-sidebar-link>
+                    @endif
                 @elseif(auth()->user()->role === 'siswa')
                     {{-- Siswa Menu --}}
                     <x-sidebar-link href="{{ route('siswa.dashboard') }}" icon="📊" :active="request()->routeIs('siswa.dashboard')">
@@ -105,12 +118,17 @@
                 <h1 class="text-lg font-semibold text-gray-800">@yield('header', 'Dashboard')</h1>
 
                 {{-- Right side --}}
-                <div class="flex items-center gap-3">
-                    <span class="hidden sm:inline text-sm text-gray-600">{{ auth()->user()->name ?? '' }}</span>
+                <div class="flex items-center gap-2.5">
+                    <span class="hidden sm:inline text-sm font-medium text-gray-700">{{ auth()->user()->name ?? '' }}</span>
+                    <a href="{{ route('password.change') }}"
+                       class="px-2.5 py-1.5 text-xs bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 transition flex items-center gap-1"
+                       title="Ubah Password Akun">
+                        <span>🔑</span> <span class="hidden md:inline">Ganti Password</span>
+                    </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit"
-                                class="px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition">
+                                class="px-3 py-1.5 text-xs font-semibold bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition">
                             Logout
                         </button>
                     </form>

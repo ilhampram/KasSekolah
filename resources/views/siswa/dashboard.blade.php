@@ -203,10 +203,19 @@
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                                         ✓ Lunas
                                     </span>
+                                @elseif($status['remaining'] <= $status['pending'])
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800" title="Pembayaran sebesar Rp {{ number_format($status['pending'], 0, ',', '.') }} sedang menunggu verifikasi bendahara">
+                                        ⏳ Menunggu Verifikasi
+                                    </span>
                                 @elseif($status['status'] === 'cicilan')
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
                                         ⚡ Cicilan
                                     </span>
+                                    @if($status['pending'] > 0)
+                                        <span class="block text-[10px] text-amber-600 mt-0.5 font-medium">
+                                            (Rp {{ number_format($status['pending'], 0, ',', '.') }} diproses)
+                                        </span>
+                                    @endif
                                 @else
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700">
                                         Belum Bayar
@@ -214,13 +223,18 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-right">
-                                @if($status['remaining'] > 0)
+                                @if($status['status'] === 'lunas')
+                                    <span class="text-xs text-emerald-600 font-semibold">Tuntas</span>
+                                @elseif($status['remaining'] <= $status['pending'])
+                                    <a href="{{ route('siswa.payments.index', ['status' => 'pending']) }}"
+                                       class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg hover:bg-amber-100 transition">
+                                        ⏳ Lihat Pengajuan
+                                    </a>
+                                @else
                                     <a href="{{ route('siswa.payments.create', ['bill_id' => $bill->id]) }}"
                                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
                                         <span>📤</span> Upload Resi
                                     </a>
-                                @else
-                                    <span class="text-xs text-emerald-600 font-semibold">Tuntas</span>
                                 @endif
                             </td>
                         </tr>

@@ -23,9 +23,9 @@ class CategoryController extends Controller
         }
 
         $categories = $query->orderBy('type')
-                            ->orderBy('name')
-                            ->paginate(15)
-                            ->withQueryString();
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('admin.categories.index', compact('categories'));
     }
@@ -40,7 +40,7 @@ class CategoryController extends Controller
         CashCategory::create($request->validated());
 
         return redirect()->route('admin.categories.index')
-                         ->with('success', 'Kategori kas berhasil ditambahkan.');
+            ->with('success', 'Kategori kas berhasil ditambahkan.');
     }
 
     public function edit(CashCategory $category)
@@ -53,18 +53,18 @@ class CategoryController extends Controller
         $category->update($request->validated());
 
         return redirect()->route('admin.categories.index')
-                         ->with('success', 'Kategori kas berhasil diperbarui.');
+            ->with('success', 'Kategori kas berhasil diperbarui.');
     }
 
     public function destroy(CashCategory $category)
     {
-        if ($category->cashBills()->count() > 0 || $category->cashExpenses()->count() > 0) {
-            return back()->with('error', 'Kategori tidak bisa dihapus karena masih digunakan dalam transaksi.');
+        if ($category->cashBills()->exists() || $category->cashTransactions()->exists()) {
+            return back()->with('error', 'Kategori tidak bisa dihapus karena masih digunakan dalam tagihan atau transaksi kas.');
         }
 
         $category->delete();
 
         return redirect()->route('admin.categories.index')
-                         ->with('success', 'Kategori kas berhasil dihapus.');
+            ->with('success', 'Kategori kas berhasil dihapus.');
     }
 }
