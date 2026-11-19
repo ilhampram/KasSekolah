@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreStudentDueRequest;
 use App\Http\Requests\Admin\UpdateStudentDueRequest;
+use App\Models\AuditLog;
 use App\Models\CashBill;
 use App\Models\CashCategory;
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class StudentDueController extends Controller
 {
@@ -108,9 +110,7 @@ class StudentDueController extends Controller
 
     public function show(CashBill $due)
     {
-        if (auth()->user()->isBendaharaKelas() && $due->class_id !== auth()->user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke tagihan kelas lain.');
-        }
+        Gate::authorize('view', $due);
 
         $due->load(['schoolClass.students', 'category', 'payments.student']);
 
@@ -153,9 +153,7 @@ class StudentDueController extends Controller
 
     public function edit(CashBill $due)
     {
-        if (auth()->user()->isBendaharaKelas() && $due->class_id !== auth()->user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke tagihan kelas lain.');
-        }
+        Gate::authorize('update', $due);
 
         $categories = CashCategory::where('type', 'in')->orderBy('name')->get();
 
@@ -164,9 +162,7 @@ class StudentDueController extends Controller
 
     public function update(UpdateStudentDueRequest $request, CashBill $due)
     {
-        if (auth()->user()->isBendaharaKelas() && $due->class_id !== auth()->user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke tagihan kelas lain.');
-        }
+        Gate::authorize('update', $due);
 
         $data = $request->validated();
         $newAmount = (float) $data['amount'];
@@ -197,15 +193,19 @@ class StudentDueController extends Controller
 
     public function destroy(CashBill $due)
     {
-        if (auth()->user()->isBendaharaKelas() && $due->class_id !== auth()->user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke tagihan kelas lain.');
-        }
+        Gate::authorize('delete', $due);
 
         if ($due->payments()->exists()) {
             return back()->with('error', 'Tagihan tidak dapat dihapus karena sudah memiliki riwayat atau pengajuan pembayaran siswa.');
         }
 
         return DB::transaction(function () use ($due) {
+            AuditLog::record('cash_bill.deleted', $due, [
+                'title' => $due->title,
+                'amount' => $due->amount,
+                'class_id' => $due->class_id,
+            ]);
+
             $due->delete();
 
             return redirect()->route('admin.dues.index')

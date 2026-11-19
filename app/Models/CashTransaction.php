@@ -21,14 +21,18 @@ class CashTransaction extends Model
         'payment_id',
         'proof_file',
         'notes',
+        'voided_at',
+        'voided_by',
+        'void_reason',
         'created_by',
     ];
 
     protected function casts(): array
     {
         return [
-            'amount'           => 'decimal:2',
+            'amount' => 'decimal:2',
             'transaction_date' => 'date',
+            'voided_at' => 'datetime',
         ];
     }
 
@@ -54,16 +58,36 @@ class CashTransaction extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+
     // ─── Scopes & Helpers ─────────────────────────────────────
+
+    public function isVoided(): bool
+    {
+        return $this->voided_at !== null;
+    }
+
+    public function scopeNotVoided($query)
+    {
+        return $query->whereNull('voided_at');
+    }
+
+    public function scopeVoided($query)
+    {
+        return $query->whereNotNull('voided_at');
+    }
 
     public function scopeIncome($query)
     {
-        return $query->where('type', 'in');
+        return $query->where('type', 'in')->whereNull('voided_at');
     }
 
     public function scopeExpense($query)
     {
-        return $query->where('type', 'out');
+        return $query->where('type', 'out')->whereNull('voided_at');
     }
 
     public static function generateTransactionNumber(string $type = 'in'): string

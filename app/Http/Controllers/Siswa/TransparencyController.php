@@ -52,7 +52,7 @@ class TransparencyController extends Controller
             ->withQueryString();
 
         // Calculate summary for selected scope
-        $statsQuery = CashTransaction::query();
+        $statsQuery = CashTransaction::query()->whereNull('voided_at');
         if ($scope === 'class' && $classId) {
             $statsQuery->where('class_id', $classId);
         }

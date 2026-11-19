@@ -14,8 +14,8 @@ class UpdateAcademicYearRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'year'      => ['required', 'string', 'max:20', 'regex:/^\d{4}\/\d{4}$/'],
-            'semester'  => ['required', 'in:Ganjil,Genap'],
+            'year' => ['required', 'string', 'max:20', 'regex:/^\d{4}\/\d{4}$/'],
+            'semester' => ['required', 'in:Ganjil,Genap'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }
@@ -24,8 +24,8 @@ class UpdateAcademicYearRequest extends FormRequest
     {
         return [
             'year.required' => 'Format tahun ajaran wajib diisi.',
-            'year.regex'    => 'Format tahun ajaran harus YYYY/YYYY (contoh: 2026/2027).',
-            'semester.in'   => 'Pilihan semester harus Ganjil atau Genap.',
+            'year.regex' => 'Format tahun ajaran harus YYYY/YYYY (contoh: 2026/2027).',
+            'semester.in' => 'Pilihan semester harus Ganjil atau Genap.',
         ];
     }
 }

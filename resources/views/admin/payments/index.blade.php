@@ -174,19 +174,51 @@
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
+                                    @if($payment->proof_file && in_array(strtolower(pathinfo($payment->proof_file, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp'], true))
+                                        @php($proofUrl = route('payments.proof', $payment))
+                                        <button type="button"
+                                                aria-haspopup="dialog"
+                                                aria-controls="payment-proof-{{ $payment->id }}"
+                                                onclick="document.getElementById('payment-proof-{{ $payment->id }}').showModal()"
+                                                class="inline-flex flex-col items-center gap-1 text-xs text-indigo-700 hover:text-indigo-900"
+                                                title="Lihat gambar bukti transfer">
+                                            <img src="{{ $proofUrl }}" alt="Bukti transfer {{ $payment->student->name }}"
+                                                 class="h-12 w-16 rounded border border-gray-200 object-cover">
+                                            <span>Lihat Bukti</span>
+                                        </button>
+                                        <dialog id="payment-proof-{{ $payment->id }}"
+                                                aria-labelledby="payment-proof-title-{{ $payment->id }}"
+                                                class="fixed inset-0 z-50 m-auto max-h-[90vh] w-[90vw] max-w-4xl overflow-hidden rounded-xl border-0 bg-white p-0 shadow-2xl backdrop:bg-black/70">
+                                            <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3">
+                                                <h2 id="payment-proof-title-{{ $payment->id }}" class="font-semibold text-gray-800">
+                                                    Bukti transfer — {{ $payment->student->name }}
+                                                </h2>
+                                                <form method="dialog">
+                                                    <button type="submit" aria-label="Tutup bukti transfer"
+                                                            class="rounded-lg px-3 py-1 text-xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                                                        &times;
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            <div class="flex max-h-[85vh] justify-center bg-gray-950 p-2">
+                                                <img src="{{ $proofUrl }}" alt="Gambar bukti transfer {{ $payment->student->name }}"
+                                                     class="max-h-[80vh] max-w-full object-contain">
+                                            </div>
+                                        </dialog>
+                                    @elseif($payment->proof_file)
+                                        <a href="{{ route('payments.proof', $payment) }}"
+                                           class="text-xs text-indigo-600 hover:text-indigo-800">
+                                            Unduh bukti PDF
+                                        </a>
+                                    @else
+                                        <span class="text-xs text-gray-400">Bukti tidak tersedia</span>
+                                    @endif
                                     @if($payment->status === 'verified')
                                         <a href="{{ route('admin.payments.receipt', $payment) }}"
                                            class="px-2.5 py-1.5 text-xs bg-indigo-50 text-indigo-700 font-semibold rounded-md hover:bg-indigo-100 transition inline-flex items-center gap-1">
                                             🧾 Kwitansi
                                         </a>
                                     @elseif($payment->status === 'pending')
-                                        @if($payment->proof_file)
-                                            <a href="{{ asset('storage/' . $payment->proof_file) }}" target="_blank"
-                                               class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
-                                               title="Lihat Bukti Transfer">
-                                                📎
-                                            </a>
-                                        @endif
                                         <form method="POST" action="{{ route('admin.payments.verify', $payment) }}">
                                             @csrf
                                             <button type="submit"

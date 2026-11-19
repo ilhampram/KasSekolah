@@ -8,20 +8,14 @@
     <title>@yield('title', 'Kas Sekolah') — {{ config('app.name', 'Kas Sekolah') }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex">
+<body class="bg-gray-100 min-h-screen">
 
-    {{-- ─── Sidebar ─────────────────────────────────────────── --}}
-    <aside id="sidebar"
-           class="fixed inset-y-0 left-0 z-30 w-64 bg-indigo-900 text-white transform -translate-x-full
-                  transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto">
+    <div class="flex min-h-screen">
+        {{-- ─── Sidebar ─────────────────────────────────────────── --}}
+        <aside id="sidebar"
+               class="fixed inset-y-0 left-0 z-30 w-64 -translate-x-full transform bg-indigo-900 text-white transition-transform duration-200 ease-in-out lg:static lg:inset-auto lg:h-screen lg:shrink-0 lg:translate-x-0 lg:overflow-y-auto">
 
-        {{-- Brand --}}
-        <div class="flex items-center gap-3 px-6 py-5 border-b border-indigo-800">
-            <span class="text-2xl">💰</span>
-            <span class="font-bold text-lg leading-tight">Kas Sekolah</span>
-        </div>
 
         {{-- Nav Menu --}}
         <nav class="mt-4 flex flex-col gap-1 px-3">
@@ -67,6 +61,9 @@
                     <x-sidebar-link href="{{ route('admin.academic-years.index') }}" icon="📅" :active="request()->routeIs('admin.academic-years.*')">
                         Tahun Ajaran
                     </x-sidebar-link>
+                    <x-sidebar-link href="{{ route('admin.audit-logs.index') }}" icon="📜" :active="request()->routeIs('admin.audit-logs.*')">
+                        Audit Log
+                    </x-sidebar-link>
                     @endif
                 @elseif(auth()->user()->role === 'siswa')
                     {{-- Siswa Menu --}}
@@ -97,22 +94,23 @@
                 </div>
             @endauth
         </div>
-    </aside>
+        </aside>
 
-    {{-- Overlay for mobile --}}
-    <div id="sidebar-overlay" class="fixed inset-0 z-20 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
+        {{-- Overlay for mobile --}}
+        <div id="sidebar-overlay" class="fixed inset-0 z-20 bg-black/50 hidden lg:hidden" onclick="toggleSidebar()"></div>
 
-    {{-- ─── Main Content Area ───────────────────────────────── --}}
-    <div class="flex-1 flex flex-col min-h-screen">
+        {{-- ─── Main Content Area ───────────────────────────────── --}}
+        <div class="flex-1 flex flex-col min-h-screen">
 
         {{-- Topbar --}}
         <header class="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200">
             <div class="flex items-center justify-between px-4 sm:px-6 h-16">
                 {{-- Hamburger --}}
-                <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button id="hamburger-btn" onclick="toggleSidebar()" aria-controls="sidebar" aria-expanded="false" aria-label="Buka menu navigasi" class="lg:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
+                    <span class="sr-only">Menu Navigasi</span>
                 </button>
 
                 <h1 class="text-lg font-semibold text-gray-800">@yield('header', 'Dashboard')</h1>
@@ -123,7 +121,7 @@
                     <a href="{{ route('password.change') }}"
                        class="px-2.5 py-1.5 text-xs bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 transition flex items-center gap-1"
                        title="Ubah Password Akun">
-                        <span>🔑</span> <span class="hidden md:inline">Ganti Password</span>
+                        <span aria-hidden="true">🔑</span> <span class="hidden md:inline">Ganti Password</span>
                     </a>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -147,6 +145,11 @@
                 <x-alert type="error">{{ session('error') }}</x-alert>
             </div>
         @endif
+        @if(session('warning'))
+            <div class="mx-4 sm:mx-6 mt-4">
+                <x-alert type="warning">{{ session('warning') }}</x-alert>
+            </div>
+        @endif
 
         {{-- Page Content --}}
         <main class="flex-1 p-4 sm:p-6">
@@ -154,9 +157,10 @@
         </main>
 
         {{-- Footer --}}
-        <footer class="border-t border-gray-200 bg-white px-6 py-3 text-center text-xs text-gray-400">
+        <footer class="border-t border-gray-200 bg-white px-6 py-3 text-center text-xs text-gray-500">
             &copy; {{ date('Y') }} Sistem Kas Sekolah. All rights reserved.
         </footer>
+    </div>
     </div>
 
     {{-- Floating Toast Notification Container (UX Enhancement) --}}
@@ -178,7 +182,7 @@
                      'border-amber-300 shadow-amber-500/10': toast.type === 'warning',
                      'border-indigo-300 shadow-indigo-500/10': toast.type === 'info',
                  }">
-                <span class="text-xl flex-shrink-0" x-text="toast.icon"></span>
+                <span class="text-xl flex-shrink-0" x-text="toast.icon" aria-hidden="true"></span>
                 <div class="flex-1 min-w-0">
                     <p class="font-bold text-xs uppercase tracking-wider"
                        :class="{
@@ -189,18 +193,41 @@
                        }" x-text="toast.title"></p>
                     <p class="text-xs text-gray-700 mt-0.5 leading-relaxed" x-text="toast.message"></p>
                 </div>
-                <button @click="removeToast(toast.id)" class="text-gray-400 hover:text-gray-600 text-base leading-none">&times;</button>
+                <button @click="removeToast(toast.id)" class="text-gray-500 hover:text-gray-700 text-base leading-none" aria-label="Tutup notifikasi">&times;</button>
             </div>
         </template>
     </div>
 
     <script>
-        function toggleSidebar() {
+        function toggleSidebar(forceState = null) {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
+            const btn = document.getElementById('hamburger-btn');
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            const shouldOpen = forceState !== null ? forceState : isClosed;
+
+            if (shouldOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                if (btn) {
+                    btn.setAttribute('aria-expanded', 'true');
+                    btn.setAttribute('aria-label', 'Tutup menu navigasi');
+                }
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+                if (btn) {
+                    btn.setAttribute('aria-expanded', 'false');
+                    btn.setAttribute('aria-label', 'Buka menu navigasi');
+                }
+            }
         }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                toggleSidebar(false);
+            }
+        });
 
         function toastManager() {
             return {

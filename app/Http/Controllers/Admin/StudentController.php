@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreStudentRequest;
 use App\Http\Requests\Admin\UpdateStudentRequest;
+use App\Models\AuditLog;
 use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -62,7 +64,7 @@ class StudentController extends Controller
     {
         $classId = auth()->user()->isBendaharaKelas() ? auth()->user()->class_id : $request->class_id;
 
-        User::create([
+        $student = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'nisn' => $request->nisn,
@@ -70,6 +72,7 @@ class StudentController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'siswa',
         ]);
+        AuditLog::record('student.created', $student, ['class_id' => $student->class_id]);
 
         return redirect()->route('admin.students.index')
             ->with('success', 'Siswa berhasil ditambahkan.');
@@ -77,6 +80,8 @@ class StudentController extends Controller
 
     public function edit(User $student)
     {
+        abort_if(! $student->isSiswa(), 404);
+
         if (auth()->user()->isBendaharaKelas() && $student->class_id !== auth()->user()->class_id) {
             abort(403, 'Anda tidak memiliki akses ke data siswa kelas lain.');
         }
@@ -90,6 +95,8 @@ class StudentController extends Controller
 
     public function update(UpdateStudentRequest $request, User $student)
     {
+        abort_if(! $student->isSiswa(), 404);
+
         if (auth()->user()->isBendaharaKelas() && $student->class_id !== auth()->user()->class_id) {
             abort(403, 'Anda tidak memiliki akses ke data siswa kelas lain.');
         }
@@ -99,7 +106,12 @@ class StudentController extends Controller
             $data['class_id'] = auth()->user()->class_id;
         }
 
+        $before = $student->only(['name', 'email', 'nisn', 'class_id']);
         $student->update($data);
+        AuditLog::record('student.updated', $student, [
+            'before' => $before,
+            'after' => $student->fresh()->only(array_keys($before)),
+        ]);
 
         return redirect()->route('admin.students.index')
             ->with('success', 'Data siswa berhasil diperbarui.');
@@ -111,6 +123,16 @@ class StudentController extends Controller
             abort(403, 'Bendahara kelas tidak memiliki izin menghapus data siswa.');
         }
 
+        abort_if(! $student->isSiswa(), 404);
+
+        if ($student->payments()->exists()) {
+            return back()->with('error', 'Siswa tidak dapat dihapus karena memiliki riwayat pembayaran kas.');
+        }
+
+        AuditLog::record('student.deleted', $student, [
+            'name' => $student->name,
+            'class_id' => $student->class_id,
+        ]);
         $student->delete();
 
         return redirect()->route('admin.students.index')
@@ -119,15 +141,24 @@ class StudentController extends Controller
 
     public function resetPassword(User $student)
     {
+        abort_if(! $student->isSiswa(), 404);
+
         if (auth()->user()->isBendaharaKelas() && $student->class_id !== auth()->user()->class_id) {
             abort(403, 'Anda tidak memiliki akses ke data siswa kelas lain.');
         }
 
+        $temporaryPassword = Str::random(16);
+
         $student->update([
-            'password' => Hash::make('password'),
+            'password' => Hash::make($temporaryPassword),
+            'must_change_password' => true,
+        ]);
+        AuditLog::record('student.password_reset', $student, [
+            'student_name' => $student->name,
+            'nisn' => $student->nisn,
         ]);
 
-        return back()->with('success', "Password siswa {$student->name} berhasil direset ke default (password).");
+        return back()->with('success', "Password sementara untuk {$student->name}: {$temporaryPassword}. Sampaikan langsung kepada siswa; password wajib diganti saat login.");
     }
 
     public function downloadTemplate(Request $request)
@@ -221,48 +252,72 @@ class StudentController extends Controller
         $skipped = 0;
         $isFirstRow = true;
 
-        foreach ($rows as $row) {
-            if ($isFirstRow) {
-                $isFirstRow = false;
-                if (isset($row[0]) && in_array(strtolower(trim((string) $row[0])), ['nama', 'nama siswa', 'name'])) {
+        // Pre-fetch existing emails and NISNs for in-memory O(1) checks and pre-hash password once
+        $existingEmails = User::pluck('email')->flip()->toArray();
+        $existingNisns = User::whereNotNull('nisn')->pluck('nisn')->flip()->toArray();
+        $defaultPassword = Hash::make('password');
+
+        DB::transaction(function () use (
+            $rows,
+            $targetClassId,
+            $defaultPassword,
+            &$existingEmails,
+            &$existingNisns,
+            &$imported,
+            &$skipped,
+            &$isFirstRow
+        ) {
+            foreach ($rows as $row) {
+                if ($isFirstRow) {
+                    $isFirstRow = false;
+                    if (isset($row[0]) && in_array(strtolower(trim((string) $row[0])), ['nama', 'nama siswa', 'name'])) {
+                        continue;
+                    }
+                }
+
+                $name = trim((string) ($row[0] ?? ''));
+                $nisn = trim((string) ($row[1] ?? ''));
+                $email = trim((string) ($row[2] ?? ''));
+
+                if ($name === '') {
                     continue;
                 }
+
+                if ($email === '') {
+                    $prefix = $nisn !== '' ? $nisn : Str::slug($name, '');
+                    $email = $prefix.'@siswa.test';
+                }
+
+                if (isset($existingEmails[$email]) || ($nisn !== '' && isset($existingNisns[$nisn]))) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $existingEmails[$email] = true;
+                if ($nisn !== '') {
+                    $existingNisns[$nisn] = true;
+                }
+
+                User::create([
+                    'name' => $name,
+                    'email' => $email,
+                    'nisn' => $nisn !== '' ? $nisn : null,
+                    'class_id' => $targetClassId,
+                    'password' => $defaultPassword,
+                    'must_change_password' => true,
+                    'role' => 'siswa',
+                ]);
+
+                $imported++;
             }
+        });
 
-            $name = trim((string) ($row[0] ?? ''));
-            $nisn = trim((string) ($row[1] ?? ''));
-            $email = trim((string) ($row[2] ?? ''));
-
-            if ($name === '') {
-                continue;
-            }
-
-            if ($email === '') {
-                $prefix = $nisn !== '' ? $nisn : Str::slug($name, '');
-                $email = $prefix.'@siswa.test';
-            }
-
-            $exists = User::where('email', $email)
-                ->when($nisn !== '', fn ($q) => $q->orWhere('nisn', $nisn))
-                ->exists();
-
-            if ($exists) {
-                $skipped++;
-
-                continue;
-            }
-
-            User::create([
-                'name' => $name,
-                'email' => $email,
-                'nisn' => $nisn !== '' ? $nisn : null,
-                'class_id' => $targetClassId,
-                'password' => Hash::make('password'),
-                'role' => 'siswa',
-            ]);
-
-            $imported++;
-        }
+        AuditLog::record('student.bulk_imported', null, [
+            'class_id' => $targetClassId,
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ]);
 
         $msg = "Berhasil mengimpor {$imported} siswa.";
         if ($skipped > 0) {

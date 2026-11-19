@@ -20,8 +20,13 @@ class PaymentPolicy
      */
     public function view(User $user, Payment $payment): bool
     {
-        if ($user->isAdmin() || $user->isBendaharaKelas()) {
+        if ($user->isAdmin()) {
             return true;
+        }
+
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null
+                && $payment->cashBill()->where('class_id', $user->class_id)->exists();
         }
 
         return $payment->student_id === $user->id;
@@ -32,11 +37,33 @@ class PaymentPolicy
      */
     public function receipt(User $user, Payment $payment): bool
     {
-        if ($user->isAdmin() || $user->isBendaharaKelas()) {
+        if ($user->isAdmin()) {
             return true;
         }
 
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null
+                && $payment->cashBill()->where('class_id', $user->class_id)->exists();
+        }
+
         return $payment->student_id === $user->id && $payment->status === 'verified';
+    }
+
+    /**
+     * Determine whether the user can view the uploaded payment proof.
+     */
+    public function proof(User $user, Payment $payment): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null
+                && $payment->cashBill()->where('class_id', $user->class_id)->exists();
+        }
+
+        return $user->isSiswa() && $payment->student_id === $user->id;
     }
 
     /**
@@ -52,7 +79,16 @@ class PaymentPolicy
      */
     public function verify(User $user, Payment $payment): bool
     {
-        return $user->isAdmin() || $user->isBendaharaKelas();
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null
+                && $payment->cashBill()->where('class_id', $user->class_id)->exists();
+        }
+
+        return false;
     }
 
     /**

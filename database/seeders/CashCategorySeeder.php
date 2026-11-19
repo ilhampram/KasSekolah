@@ -15,35 +15,35 @@ class CashCategorySeeder extends Seeder
         $categories = [
             // ── Pemasukan (in) ─────────────────────────────────
             [
-                'name'        => 'Iuran Bulanan',
-                'type'        => 'in',
+                'name' => 'Iuran Bulanan',
+                'type' => 'in',
                 'description' => 'Iuran kas rutin bulanan setiap siswa.',
             ],
             [
-                'name'        => 'Kas Acara',
-                'type'        => 'in',
+                'name' => 'Kas Acara',
+                'type' => 'in',
                 'description' => 'Iuran untuk kegiatan/acara kelas.',
             ],
             [
-                'name'        => 'Sumbangan Sukarela',
-                'type'        => 'in',
+                'name' => 'Sumbangan Sukarela',
+                'type' => 'in',
                 'description' => 'Sumbangan sukarela dari siswa atau pihak lain.',
             ],
 
             // ── Pengeluaran (out) ──────────────────────────────
             [
-                'name'        => 'Pembelian Alat Kelas',
-                'type'        => 'out',
+                'name' => 'Pembelian Alat Kelas',
+                'type' => 'out',
                 'description' => 'Pengeluaran untuk pembelian perlengkapan kelas (spidol, penghapus, dll).',
             ],
             [
-                'name'        => 'Biaya Kegiatan',
-                'type'        => 'out',
+                'name' => 'Biaya Kegiatan',
+                'type' => 'out',
                 'description' => 'Pengeluaran untuk pelaksanaan kegiatan/acara kelas.',
             ],
             [
-                'name'        => 'Biaya Kebersihan',
-                'type'        => 'out',
+                'name' => 'Biaya Kebersihan',
+                'type' => 'out',
                 'description' => 'Pengeluaran untuk perlengkapan kebersihan kelas.',
             ],
         ];

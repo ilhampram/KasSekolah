@@ -12,8 +12,12 @@ class CashBillPolicy
      */
     public function view(User $user, CashBill $bill): bool
     {
-        if ($user->isAdmin() || $user->isBendaharaKelas()) {
+        if ($user->isAdmin()) {
             return true;
+        }
+
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null && $bill->class_id === $user->class_id;
         }
 
         return $user->class_id !== null && $bill->class_id === $user->class_id;
@@ -24,7 +28,7 @@ class CashBillPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin() || $user->isBendaharaKelas();
+        return $user->isAdmin() || ($user->isBendaharaKelas() && $user->class_id !== null);
     }
 
     /**
@@ -32,7 +36,15 @@ class CashBillPolicy
      */
     public function update(User $user, CashBill $bill): bool
     {
-        return $user->isAdmin() || $user->isBendaharaKelas();
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if ($user->isBendaharaKelas()) {
+            return $user->class_id !== null && $bill->class_id === $user->class_id;
+        }
+
+        return false;
     }
 
     /**

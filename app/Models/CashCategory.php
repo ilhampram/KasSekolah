@@ -34,14 +34,6 @@ class CashCategory extends Model
         return $this->hasMany(CashTransaction::class, 'category_id');
     }
 
-    /**
-     * Cash expenses under this category.
-     */
-    public function cashExpenses(): HasMany
-    {
-        return $this->hasMany(CashExpense::class, 'category_id');
-    }
-
     // ─── Helpers ──────────────────────────────────────────────
 
     public function isIncome(): bool

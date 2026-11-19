@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreClassRequest;
 use App\Http\Requests\Admin\UpdateClassRequest;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\SchoolClass;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class ClassRoomController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('class_name', 'like', "%{$search}%")
-                  ->orWhere('homeroom_teacher', 'like', "%{$search}%");
+                    ->orWhere('homeroom_teacher', 'like', "%{$search}%");
             });
         }
 
@@ -27,12 +28,12 @@ class ClassRoomController extends Controller
         }
 
         $classes = $query->orderBy('class_name')
-                         ->paginate(15)
-                         ->withQueryString();
+            ->paginate(15)
+            ->withQueryString();
 
         $academicYears = AcademicYear::orderByDesc('year')
-                            ->orderBy('semester')
-                            ->get();
+            ->orderBy('semester')
+            ->get();
 
         return view('admin.classes.index', compact('classes', 'academicYears'));
     }
@@ -54,7 +55,7 @@ class ClassRoomController extends Controller
         SchoolClass::create($data);
 
         return redirect()->route('admin.classes.index')
-                         ->with('success', 'Kelas berhasil ditambahkan.');
+            ->with('success', 'Kelas berhasil ditambahkan.');
     }
 
     public function edit(SchoolClass $class)
@@ -73,18 +74,28 @@ class ClassRoomController extends Controller
         $class->update($data);
 
         return redirect()->route('admin.classes.index')
-                         ->with('success', 'Kelas berhasil diperbarui.');
+            ->with('success', 'Kelas berhasil diperbarui.');
     }
 
     public function destroy(SchoolClass $class)
     {
-        if ($class->students()->count() > 0) {
+        if ($class->students()->exists()) {
             return back()->with('error', 'Kelas tidak bisa dihapus karena masih memiliki siswa.');
         }
+
+        if ($class->cashBills()->exists() || $class->cashTransactions()->exists()) {
+            return back()->with('error', 'Kelas tidak bisa dihapus karena memiliki riwayat tagihan atau transaksi kas.');
+        }
+
+        AuditLog::record('class.deleted', $class, [
+            'class_name' => $class->class_name,
+            'academic_year' => $class->academic_year,
+            'homeroom_teacher' => $class->homeroom_teacher,
+        ]);
 
         $class->delete();
 
         return redirect()->route('admin.classes.index')
-                         ->with('success', 'Kelas berhasil dihapus.');
+            ->with('success', 'Kelas berhasil dihapus.');
     }
 }

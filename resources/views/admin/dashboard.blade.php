@@ -4,8 +4,6 @@
 @section('header', 'Dashboard Analytics & Keuangan')
 
 @section('content')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     {{-- Greeting & Overview Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>

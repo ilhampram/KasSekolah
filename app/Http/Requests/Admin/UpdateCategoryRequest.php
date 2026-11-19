@@ -14,8 +14,8 @@ class UpdateCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'        => ['required', 'string', 'max:255'],
-            'type'        => ['required', 'in:in,out'],
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['required', 'in:in,out'],
             'description' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -25,7 +25,7 @@ class UpdateCategoryRequest extends FormRequest
         return [
             'name.required' => 'Nama kategori wajib diisi.',
             'type.required' => 'Tipe kategori wajib dipilih.',
-            'type.in'       => 'Tipe harus Pemasukan atau Pengeluaran.',
+            'type.in' => 'Tipe harus Pemasukan atau Pengeluaran.',
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCategoryRequest;
 use App\Http\Requests\Admin\UpdateCategoryRequest;
+use App\Models\AuditLog;
 use App\Models\CashCategory;
 use Illuminate\Http\Request;
 
@@ -61,6 +62,11 @@ class CategoryController extends Controller
         if ($category->cashBills()->exists() || $category->cashTransactions()->exists()) {
             return back()->with('error', 'Kategori tidak bisa dihapus karena masih digunakan dalam tagihan atau transaksi kas.');
         }
+
+        AuditLog::record('category.deleted', $category, [
+            'name' => $category->name,
+            'type' => $category->type,
+        ]);
 
         $category->delete();
 

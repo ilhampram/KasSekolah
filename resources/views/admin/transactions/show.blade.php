@@ -7,23 +7,35 @@
     <div class="max-w-3xl">
         <div class="mb-6 flex items-center justify-between">
             <a href="{{ route('admin.transactions.index') }}" class="text-sm text-indigo-600 hover:underline">← Kembali ke Buku Kas</a>
-            @if(! $transaction->payment_id)
+            @if(! $transaction->payment_id && ! $transaction->isVoided())
                 <div class="flex items-center gap-2">
                     <a href="{{ route('admin.transactions.edit', $transaction) }}"
                        class="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition">
                         ✏️ Edit
                     </a>
                     <form method="POST" action="{{ route('admin.transactions.destroy', $transaction) }}"
-                          onsubmit="return confirm('Hapus transaksi ini?')">
+                          onsubmit="const reason = prompt('Masukkan alasan pembatalan (void) transaksi {{ $transaction->transaction_number }}:'); if (!reason) return false; this.querySelector('input[name=void_reason]').value = reason; return true;">
                         @csrf @method('DELETE')
+                        <input type="hidden" name="void_reason" value="">
                         <button type="submit"
                                 class="px-3 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition">
-                            🗑️ Hapus
+                            🚫 Void
                         </button>
                     </form>
                 </div>
             @endif
         </div>
+
+        @if($transaction->isVoided())
+            <div class="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
+                <span class="text-xl">🚫</span>
+                <div>
+                    <h3 class="font-bold text-sm">Transaksi Dibatalkan (VOID)</h3>
+                    <p class="text-xs mt-1">Dibatalkan pada {{ $transaction->voided_at->format('d/m/Y H:i') }} oleh <strong>{{ $transaction->voidedBy?->name ?? 'Admin/Bendahara' }}</strong>.</p>
+                    <p class="text-xs mt-1 italic bg-white/70 p-2 rounded border border-rose-100">"{{ $transaction->void_reason }}"</p>
+                </div>
+            </div>
+        @endif
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {{-- Top Banner --}}
@@ -106,11 +118,14 @@
                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wider mb-3">Lampiran Bukti Transaksi</p>
                         @php
                             $ext = strtolower(pathinfo($transaction->proof_file, PATHINFO_EXTENSION));
+                            $proofUrl = $transaction->payment_id
+                                ? route('payments.proof', $transaction->payment_id)
+                                : route('transactions.proof', $transaction);
                         @endphp
 
                         @if(in_array($ext, ['jpg', 'jpeg', 'png', 'webp']))
                             <div class="border border-gray-200 rounded-lg p-2 max-w-md bg-gray-50">
-                                <img src="{{ asset('storage/' . $transaction->proof_file) }}" alt="Bukti Transaksi" class="w-full rounded-md shadow-sm max-h-96 object-contain">
+                                <img src="{{ $proofUrl }}" alt="Bukti Transaksi" class="w-full rounded-md shadow-sm max-h-96 object-contain">
                             </div>
                         @else
                             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -119,7 +134,7 @@
                                     <p class="text-sm font-medium text-gray-800 truncate">{{ basename($transaction->proof_file) }}</p>
                                     <p class="text-xs text-gray-400">Dokumen PDF</p>
                                 </div>
-                                <a href="{{ asset('storage/' . $transaction->proof_file) }}" target="_blank"
+                                <a href="{{ $proofUrl }}" target="_blank"
                                    class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition">
                                     Unduh / Lihat
                                 </a>

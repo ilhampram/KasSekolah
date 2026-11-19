@@ -67,6 +67,9 @@ class CashBill extends Model
         return (float) $this->verifiedPayments()->sum('amount_paid');
     }
 
+    /**
+     * @return array{paid: float, pending: float, remaining: float, status: string}
+     */
     public function studentPaymentStatus(int $studentId): array
     {
         if ($this->relationLoaded('payments')) {
@@ -105,5 +108,16 @@ class CashBill extends Model
             'remaining' => $remaining,
             'status' => $status,
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $cashBill): void {
+            if (auth()->check()) {
+                AuditLog::record('cash_bill.deleted', $cashBill, [
+                    'data' => $cashBill->attributesToArray(),
+                ]);
+            }
+        });
     }
 }

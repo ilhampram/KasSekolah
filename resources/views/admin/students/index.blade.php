@@ -155,7 +155,7 @@
 
                                     {{-- Reset Password --}}
                                     <form method="POST" action="{{ route('admin.students.reset-password', $student) }}"
-                                          onsubmit="return confirm('Reset password {{ $student->name }} ke default?')">
+                                          onsubmit="return confirm('Buat password sementara baru untuk {{ $student->name }}?')">
                                         @csrf
                                         <button type="submit"
                                                 class="px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition">
@@ -164,14 +164,16 @@
                                     </form>
 
                                     {{-- Delete --}}
-                                    <form method="POST" action="{{ route('admin.students.destroy', $student) }}"
-                                          onsubmit="return confirm('Yakin ingin menghapus siswa {{ $student->name }}?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit"
-                                                class="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition">
-                                            🗑️ Hapus
-                                        </button>
-                                    </form>
+                                    @if(auth()->user()->isAdmin())
+                                        <form method="POST" action="{{ route('admin.students.destroy', $student) }}"
+                                              onsubmit="return confirm('Yakin ingin menghapus siswa {{ $student->name }}?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition">
+                                                🗑️ Hapus
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

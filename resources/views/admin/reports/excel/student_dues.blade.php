@@ -44,10 +44,10 @@
         @foreach($duesData as $i => $item)
             <tr>
                 <td style="border: 1px solid #ddd; text-align: center;">{{ $i + 1 }}</td>
-                <td style="border: 1px solid #ddd; font-weight: bold;">{{ $item['student_name'] }}</td>
-                <td style="border: 1px solid #ddd;">{{ $item['nisn'] }}</td>
-                <td style="border: 1px solid #ddd;">{{ $item['class_name'] }}</td>
-                <td style="border: 1px solid #ddd;">{{ $item['bill_title'] }}</td>
+                <td style="border: 1px solid #ddd; font-weight: bold;">{{ \App\Helpers\SpreadsheetHelper::sanitize($item['student_name']) }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($item['nisn']) }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($item['class_name']) }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($item['bill_title']) }}</td>
                 <td style="border: 1px solid #ddd; text-align: right;">{{ $item['amount'] }}</td>
                 <td style="border: 1px solid #ddd; text-align: right; color: #16a34a;">{{ $item['paid'] }}</td>
                 <td style="border: 1px solid #ddd; text-align: right; color: #dc2626; font-weight: bold;">{{ $item['remaining'] }}</td>

@@ -5,13 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\CashTransactionExport;
 use App\Exports\StudentDuesRecapExport;
 use App\Http\Controllers\Controller;
-use App\Models\CashBill;
 use App\Models\CashCategory;
 use App\Models\CashTransaction;
 use App\Models\SchoolClass;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
@@ -238,54 +238,100 @@ class ReportController extends Controller
         ?string $type,
         float $initialBalance
     ): array {
-        $query = CashTransaction::with(['category', 'schoolClass', 'creator'])
+        $baseQuery = CashTransaction::with(['category', 'schoolClass', 'creator'])
             ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->whereNull('voided_at')
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
 
         if ($classId) {
-            $query->where('class_id', $classId);
+            $baseQuery->where('class_id', $classId);
         }
         if ($categoryId) {
-            $query->where('category_id', $categoryId);
+            $baseQuery->where('category_id', $categoryId);
         }
         if ($type && in_array($type, ['in', 'out'])) {
-            $query->where('type', $type);
+            $baseQuery->where('type', $type);
         }
 
-        $rawList = $query->get();
+        try {
+            // Attempt SQL Window function (supported in MySQL 8.0+, MariaDB 10.2+, SQLite 3.25+)
+            $windowQuery = clone $baseQuery;
+            $windowQuery->select('*')
+                ->selectRaw('SUM(CASE WHEN type = \'in\' THEN amount ELSE -amount END) OVER (ORDER BY transaction_date ASC, id ASC) as window_delta');
 
-        $running = $initialBalance;
-        $result = [];
+            $rawList = $windowQuery->get();
+            $result = [];
 
-        foreach ($rawList as $trx) {
-            if ($trx->type === 'in') {
-                $running += (float) $trx->amount;
-            } else {
-                $running -= (float) $trx->amount;
+            foreach ($rawList as $trx) {
+                $result[] = [
+                    'model' => $trx,
+                    'running_balance' => $initialBalance + (float) $trx->window_delta,
+                ];
             }
 
-            $result[] = [
-                'model' => $trx,
-                'running_balance' => $running,
-            ];
-        }
+            return $result;
+        } catch (\Throwable $e) {
+            // ponytail: fallback to PHP iterative calculation if older MySQL/MariaDB lacks window functions
+            $rawList = $baseQuery->get();
+            $running = $initialBalance;
+            $result = [];
 
-        return $result;
+            foreach ($rawList as $trx) {
+                if ($trx->type === 'in') {
+                    $running += (float) $trx->amount;
+                } else {
+                    $running -= (float) $trx->amount;
+                }
+
+                $result[] = [
+                    'model' => $trx,
+                    'running_balance' => $running,
+                ];
+            }
+
+            return $result;
+        }
     }
 
     private function getStudentDuesData(?string $classId, ?string $categoryId): array
     {
-        $billsQuery = CashBill::with(['schoolClass.students', 'category', 'payments']);
-
-        if ($classId) {
-            $billsQuery->where('class_id', $classId);
-        }
-        if ($categoryId) {
-            $billsQuery->where('category_id', $categoryId);
-        }
-
-        $bills = $billsQuery->get();
+        $query = DB::table('cash_bills')
+            ->join('classes', 'classes.id', '=', 'cash_bills.class_id')
+            ->join('users', function ($join) {
+                $join->on('users.class_id', '=', 'classes.id')
+                    ->where('users.role', '=', 'siswa');
+            })
+            ->leftJoin('cash_categories', 'cash_categories.id', '=', 'cash_bills.category_id')
+            ->leftJoin('payments', function ($join) {
+                $join->on('payments.cash_bill_id', '=', 'cash_bills.id')
+                    ->on('payments.student_id', '=', 'users.id')
+                    ->where('payments.status', '=', 'verified');
+            })
+            ->select([
+                'users.name as student_name',
+                'users.nisn',
+                'classes.class_name',
+                'cash_bills.title as bill_title',
+                'cash_categories.name as category',
+                'cash_bills.amount',
+                DB::raw('COALESCE(SUM(payments.amount_paid), 0) as paid'),
+            ])
+            ->when($classId, fn ($q, $cid) => $q->where('cash_bills.class_id', $cid))
+            ->when($categoryId, fn ($q, $catId) => $q->where('cash_bills.category_id', $catId))
+            ->groupBy([
+                'cash_bills.id',
+                'cash_bills.title',
+                'cash_bills.amount',
+                'classes.class_name',
+                'cash_categories.name',
+                'users.id',
+                'users.name',
+                'users.nisn',
+            ])
+            ->orderBy('classes.class_name')
+            ->orderBy('cash_bills.id')
+            ->orderBy('users.name');
 
         $items = [];
         $totalTarget = 0;
@@ -294,34 +340,39 @@ class ReportController extends Controller
         $lunasCount = 0;
         $belumCount = 0;
 
-        foreach ($bills as $bill) {
-            $students = $bill->schoolClass ? $bill->schoolClass->students : collect();
+        foreach ($query->cursor() as $row) {
+            $amount = (float) $row->amount;
+            $paid = (float) $row->paid;
+            $remaining = max(0, $amount - $paid);
 
-            foreach ($students as $student) {
-                $status = $bill->studentPaymentStatus($student->id);
-
-                $totalTarget += (float) $bill->amount;
-                $totalPaid += $status['paid'];
-                $totalDebt += $status['remaining'];
-
-                if ($status['status'] === 'lunas') {
-                    $lunasCount++;
-                } else {
-                    $belumCount++;
-                }
-
-                $items[] = [
-                    'student_name' => $student->name,
-                    'nisn' => $student->nisn ?? '-',
-                    'class_name' => $bill->schoolClass->class_name ?? '-',
-                    'bill_title' => $bill->title,
-                    'category' => $bill->category->name ?? '-',
-                    'amount' => (float) $bill->amount,
-                    'paid' => $status['paid'],
-                    'remaining' => $status['remaining'],
-                    'status' => $status['status'],
-                ];
+            $status = 'belum_bayar';
+            if ($paid >= $amount) {
+                $status = 'lunas';
+            } elseif ($paid > 0) {
+                $status = 'cicilan';
             }
+
+            $totalTarget += $amount;
+            $totalPaid += $paid;
+            $totalDebt += $remaining;
+
+            if ($status === 'lunas') {
+                $lunasCount++;
+            } else {
+                $belumCount++;
+            }
+
+            $items[] = [
+                'student_name' => $row->student_name,
+                'nisn' => $row->nisn ?? '-',
+                'class_name' => $row->class_name ?? '-',
+                'bill_title' => $row->bill_title,
+                'category' => $row->category ?? '-',
+                'amount' => $amount,
+                'paid' => $paid,
+                'remaining' => $remaining,
+                'status' => $status,
+            ];
         }
 
         return [

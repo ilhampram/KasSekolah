@@ -50,11 +50,11 @@ class DashboardController extends Controller
         $remainingDebt = max(0, $totalBillAmount - $totalPaidAmount);
 
         // Kas Transparansi Metrics
-        $classIncome  = $classId ? (float) CashTransaction::income()->where('class_id', $classId)->sum('amount') : 0;
+        $classIncome = $classId ? (float) CashTransaction::income()->where('class_id', $classId)->sum('amount') : 0;
         $classExpense = $classId ? (float) CashTransaction::expense()->where('class_id', $classId)->sum('amount') : 0;
         $classBalance = $classIncome - $classExpense;
 
-        $schoolIncome  = (float) CashTransaction::income()->sum('amount');
+        $schoolIncome = (float) CashTransaction::income()->sum('amount');
         $schoolExpense = (float) CashTransaction::expense()->sum('amount');
         $schoolBalance = $schoolIncome - $schoolExpense;
 

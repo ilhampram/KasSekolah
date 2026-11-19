@@ -132,7 +132,7 @@
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if($payment->proof_file)
-                                    <a href="{{ asset('storage/' . $payment->proof_file) }}" target="_blank"
+                                    <a href="{{ route('payments.proof', $payment) }}" target="_blank"
                                        class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md font-medium transition">
                                         📎 Lihat Resi
                                     </a>

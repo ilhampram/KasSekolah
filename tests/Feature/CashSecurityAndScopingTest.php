@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\CashBill;
 use App\Models\CashCategory;
 use App\Models\CashTransaction;
@@ -11,7 +12,9 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
@@ -289,6 +292,9 @@ class CashSecurityAndScopingTest extends TestCase
 
     public function test_student_cannot_double_submit_pending_payment(): void
     {
+        Storage::fake('local');
+        Storage::fake('public');
+
         $bill = CashBill::create([
             'class_id' => $this->classA->id,
             'category_id' => $this->catIncome->id,
@@ -306,6 +312,10 @@ class CashSecurityAndScopingTest extends TestCase
             'proof_file' => $file,
         ])->assertRedirect('/siswa/payments');
 
+        $payment = Payment::query()->where('cash_bill_id', $bill->id)->firstOrFail();
+        Storage::disk('local')->assertExists($payment->proof_file);
+        Storage::disk('public')->assertMissing($payment->proof_file);
+
         // Second attempt to upload while first is still pending
         $file2 = UploadedFile::fake()->create('bukti2.jpg', 100, 'image/jpeg');
         $response = $this->actingAs($this->siswaA)->post('/siswa/payments', [
@@ -316,6 +326,37 @@ class CashSecurityAndScopingTest extends TestCase
         ]);
 
         $response->assertSessionHas('error');
+    }
+
+    public function test_cashier_stores_payment_proof_privately_and_links_it_to_the_cash_transaction(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Kelas',
+            'amount' => 25000,
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin)->post('/admin/payments', [
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 25000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'transfer',
+            'proof_file' => UploadedFile::fake()->image('bukti-admin.png'),
+        ]);
+
+        $payment = Payment::query()->where('cash_bill_id', $bill->id)->firstOrFail();
+        $transaction = CashTransaction::query()->where('payment_id', $payment->id)->firstOrFail();
+
+        $response->assertRedirect(route('admin.payments.receipt', $payment));
+        Storage::disk('local')->assertExists($payment->proof_file);
+        Storage::disk('public')->assertMissing($payment->proof_file);
+        $this->assertSame($payment->proof_file, $transaction->proof_file);
     }
 
     public function test_authenticated_user_can_change_password(): void
@@ -339,6 +380,29 @@ class CashSecurityAndScopingTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('current_password');
+    }
+
+    public function test_student_password_reset_generates_temporary_password_and_requires_change(): void
+    {
+        $response = $this->actingAs($this->admin)->post("/admin/students/{$this->siswaA->id}/reset-password");
+
+        $response->assertSessionHas('success');
+        $temporaryPassword = null;
+        $response->assertSessionHas('success', function (string $message) use (&$temporaryPassword): bool {
+            preg_match('/Password sementara untuk .*?: ([A-Za-z0-9]{16})\./', $message, $matches);
+            $temporaryPassword = $matches[1] ?? null;
+
+            return $temporaryPassword !== null;
+        });
+
+        $this->assertNotNull($temporaryPassword);
+        $this->assertTrue(Hash::check($temporaryPassword, $this->siswaA->fresh()->password));
+        $this->assertTrue($this->siswaA->fresh()->must_change_password);
+        $this->assertDatabaseHas('audit_logs', [
+            'event' => 'student.password_reset',
+            'subject_id' => $this->siswaA->id,
+        ]);
+        $this->assertStringNotContainsString($temporaryPassword, json_encode(AuditLog::where('event', 'student.password_reset')->first()->properties));
     }
 
     public function test_student_and_admin_can_download_receipt_pdf(): void
@@ -549,5 +613,307 @@ class CashSecurityAndScopingTest extends TestCase
         ]);
 
         $response->assertStatus(429);
+    }
+
+    public function test_admin_sees_uploaded_image_proof_in_a_modal_and_not_a_pdf_preview(): void
+    {
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Juni',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $imagePayment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 10000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'pending',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/proof-image.png',
+        ]);
+
+        $pdfPayment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 10000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'pending',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/proof-receipt.pdf',
+        ]);
+
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $response = $this->actingAs($this->admin)->get('/admin/payments');
+
+        $response->assertOk();
+        $response->assertSee('Lihat Bukti');
+        $response->assertSee('payment-proof-'.$imagePayment->id, false);
+        $response->assertSee(route('payments.proof', $imagePayment), false);
+        $response->assertSee('showModal()', false);
+        $response->assertSee('Unduh bukti PDF');
+        $response->assertDontSee('payment-proof-'.$pdfPayment->id, false);
+        $response->assertSee(route('payments.proof', $pdfPayment), false);
+        $response->assertDontSee('target="_blank"', false);
+    }
+
+    public function test_bendahara_can_open_image_proof_for_verified_class_payment(): void
+    {
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran September',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $payment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 20000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'verified',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/verified-proof.png',
+        ]);
+
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $response = $this->actingAs($this->bendaharaA)->get('/admin/payments');
+
+        $response->assertOk();
+        $response->assertSee('payment-proof-'.$payment->id, false);
+        $response->assertSee(route('payments.proof', $payment), false);
+        $response->assertSee('Lihat Bukti');
+        $response->assertSee(route('admin.payments.receipt', $payment), false);
+    }
+
+    public function test_payment_proof_policy_limits_students_and_bendahara_to_their_scope(): void
+    {
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Keamanan',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $payment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 20000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'pending',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/secure-proof.png',
+        ]);
+
+        $bendaharaB = User::create([
+            'name' => 'Bendahara B',
+            'email' => 'bendahara.b@sekolah.test',
+            'password' => bcrypt('password'),
+            'role' => 'bendahara_kelas',
+            'class_id' => $this->classB->id,
+        ]);
+
+        $otherStudent = User::create([
+            'name' => 'Siswa B',
+            'email' => 'siswa.b@sekolah.test',
+            'password' => bcrypt('password'),
+            'role' => 'siswa',
+            'class_id' => $this->classA->id,
+        ]);
+
+        $unassignedBendahara = User::create([
+            'name' => 'Bendahara Tanpa Kelas',
+            'email' => 'bendahara.unassigned@sekolah.test',
+            'password' => bcrypt('password'),
+            'role' => 'bendahara_kelas',
+            'class_id' => null,
+        ]);
+
+        $this->assertTrue(Gate::forUser($this->admin)->allows('proof', $payment));
+        $this->assertTrue(Gate::forUser($this->bendaharaA)->allows('proof', $payment));
+        $this->assertFalse(Gate::forUser($bendaharaB)->allows('proof', $payment));
+        $this->assertFalse(Gate::forUser($unassignedBendahara)->allows('proof', $payment));
+        $this->assertTrue(Gate::forUser($this->siswaA)->allows('proof', $payment));
+        $this->assertFalse(Gate::forUser($otherStudent)->allows('proof', $payment));
+    }
+
+    public function test_authorized_users_can_view_private_images_but_others_cannot(): void
+    {
+        Storage::fake('local');
+
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Kegiatan',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $payment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 20000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'verified',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/secure-proof.png',
+        ]);
+
+        Storage::disk('local')->put($payment->proof_file, UploadedFile::fake()->image('proof.png')->getContent());
+
+        $this->actingAs($this->bendaharaA)
+            ->get(route('payments.proof', $payment))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Cache-Control', 'no-store, private');
+
+        $this->actingAs($this->siswaA)->get(route('payments.proof', $payment))->assertOk();
+
+        $otherStudent = User::create([
+            'name' => 'Siswa B',
+            'email' => 'siswa.unauthorized@sekolah.test',
+            'password' => bcrypt('password'),
+            'role' => 'siswa',
+            'class_id' => $this->classA->id,
+        ]);
+
+        $this->actingAs($otherStudent)->get(route('payments.proof', $payment))->assertForbidden();
+    }
+
+    public function test_pdf_payment_proof_is_downloaded_instead_of_rendered_inline(): void
+    {
+        Storage::fake('local');
+
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Perpustakaan',
+            'amount' => 10000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $payment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 10000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'pending',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/secure-proof.pdf',
+        ]);
+
+        Storage::disk('local')->put($payment->proof_file, "%PDF-1.4\nproof\n");
+
+        $response = $this->actingAs($this->admin)->get(route('payments.proof', $payment));
+
+        $response->assertOk();
+        $this->assertStringStartsWith('attachment;', $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_secure_payment_proofs_command_moves_legacy_files_only_after_verification(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Laboratorium',
+            'amount' => 10000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $payment = Payment::create([
+            'cash_bill_id' => $bill->id,
+            'student_id' => $this->siswaA->id,
+            'amount_paid' => 10000,
+            'payment_date' => now()->toDateString(),
+            'status' => 'verified',
+            'payment_method' => 'transfer',
+            'proof_file' => 'payments/legacy-proof.png',
+        ]);
+
+        Storage::disk('public')->put($payment->proof_file, 'legacy image content');
+        Storage::disk('public')->put('payments/orphan-proof.jpg', 'orphan image content');
+
+        $this->artisan('payments:secure-proofs --dry-run')->assertExitCode(0);
+        Storage::disk('public')->assertExists($payment->proof_file);
+        Storage::disk('public')->assertExists('payments/orphan-proof.jpg');
+        Storage::disk('local')->assertMissing($payment->proof_file);
+        Storage::disk('local')->assertMissing('payments/orphan-proof.jpg');
+
+        $this->artisan('payments:secure-proofs')->assertExitCode(0);
+        Storage::disk('public')->assertMissing($payment->proof_file);
+        Storage::disk('public')->assertMissing('payments/orphan-proof.jpg');
+        Storage::disk('local')->assertExists($payment->proof_file);
+        Storage::disk('local')->assertExists('payments/orphan-proof.jpg');
+        $this->assertSame('legacy image content', Storage::disk('local')->get($payment->proof_file));
+    }
+
+    public function test_bendahara_without_a_class_assignment_cannot_open_class_finance_pages(): void
+    {
+        $unassignedBendahara = User::create([
+            'name' => 'Bendahara Tanpa Kelas',
+            'email' => 'bendahara.tanpa.kelas@sekolah.test',
+            'password' => bcrypt('password'),
+            'role' => 'bendahara_kelas',
+            'class_id' => null,
+        ]);
+
+        $this->actingAs($unassignedBendahara)->get('/admin/payments')->assertForbidden();
+        $this->actingAs($unassignedBendahara)->get('/admin/transactions')->assertForbidden();
+        $this->actingAs($unassignedBendahara)->get('/admin/dues')->assertForbidden();
+        $this->actingAs($unassignedBendahara)->get('/admin/dashboard')->assertForbidden();
+    }
+
+    public function test_bendahara_receives_403_when_querying_student_outside_bill_class(): void
+    {
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Juli',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $student = User::create([
+            'name' => 'Siswa Kelas B',
+            'email' => 'siswa.kelas.b@test.sekolah',
+            'password' => bcrypt('password'),
+            'role' => 'siswa',
+            'class_id' => $this->classB->id,
+        ]);
+
+        $response = $this->actingAs($this->bendaharaA)->getJson(
+            "/admin/payments/bill-status?bill_id={$bill->id}&student_id={$student->id}"
+        );
+
+        $response->assertForbidden();
+    }
+
+    public function test_bill_status_returns_404_for_unknown_student(): void
+    {
+        $bill = CashBill::create([
+            'class_id' => $this->classA->id,
+            'category_id' => $this->catIncome->id,
+            'title' => 'Iuran Agustus',
+            'amount' => 20000,
+            'due_date' => now()->addDays(5)->toDateString(),
+        ]);
+
+        $response = $this->actingAs($this->admin)->getJson(
+            "/admin/payments/bill-status?bill_id={$bill->id}&student_id=999999"
+        );
+
+        $response->assertNotFound();
     }
 }

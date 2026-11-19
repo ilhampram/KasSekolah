@@ -6,7 +6,7 @@
               ? 'bg-indigo-800 text-white'
               : 'text-indigo-200 hover:bg-indigo-800/60 hover:text-white' }}">
     <div class="flex items-center gap-3">
-        <span class="text-base">{{ $icon }}</span>
+        <span class="text-base" aria-hidden="true">{{ $icon }}</span>
         <span>{{ $slot }}</span>
     </div>
     @if($badge && $badge > 0)

@@ -113,20 +113,24 @@
                                        title="Pantau & Catat Kasir">
                                         👥 Pantau Siswa
                                     </a>
-                                    <a href="{{ route('admin.dues.edit', $bill) }}"
-                                       class="px-2.5 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition"
-                                       title="Edit">
-                                        ✏️
-                                    </a>
-                                    <form method="POST" action="{{ route('admin.dues.destroy', $bill) }}"
-                                          onsubmit="return confirm('Hapus tagihan {{ $bill->title }}?')">
-                                        @csrf @method('DELETE')
-                                        <button type="submit"
-                                                class="px-2.5 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition"
-                                                title="Hapus">
-                                            🗑️
-                                        </button>
-                                    </form>
+                                    @can('update', $bill)
+                                        <a href="{{ route('admin.dues.edit', $bill) }}"
+                                           class="px-2.5 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition"
+                                           title="Edit">
+                                            ✏️
+                                        </a>
+                                    @endcan
+                                    @can('delete', $bill)
+                                        <form method="POST" action="{{ route('admin.dues.destroy', $bill) }}"
+                                              onsubmit="return confirm('Hapus tagihan {{ $bill->title }}?')">
+                                            @csrf @method('DELETE')
+                                            <button type="submit"
+                                                    class="px-2.5 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition"
+                                                    title="Hapus">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

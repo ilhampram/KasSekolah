@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AcademicYearController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CashTransactionController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ClassRoomController;
@@ -10,6 +11,8 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudentDueController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CashTransactionProofController;
+use App\Http\Controllers\PaymentProofController;
 use App\Http\Controllers\Siswa\DashboardController as SiswaDashboard;
 use App\Http\Controllers\Siswa\PaymentHistoryController;
 use App\Http\Controllers\Siswa\TransparencyController;
@@ -17,7 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 // ─── Public / Guest ───────────────────────────────────────────
-Route::get('/', fn () => redirect()->route('login'));
+Route::view('/', 'landing')->name('landing');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -34,6 +37,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/change-password', [AuthController::class, 'showChangePassword'])->name('password.change');
     Route::put('/change-password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1')->name('password.update.auth');
+    Route::get('/payments/{payment}/proof', PaymentProofController::class)->name('payments.proof');
+    Route::get('/transactions/{transaction}/proof', CashTransactionProofController::class)->name('transactions.proof');
 });
 
 // ─── Dashboard Redirect ──────────────────────────────────────
@@ -60,6 +65,7 @@ Route::prefix('admin')
             Route::resource('academic-years', AcademicYearController::class)->except(['show']);
             Route::resource('classes', ClassRoomController::class)->except(['show']);
             Route::resource('categories', CategoryController::class)->except(['show']);
+            Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
         });
 
         // Master Siswa

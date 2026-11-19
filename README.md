@@ -21,10 +21,10 @@ Aplikasi web untuk mencatat, mengelola, dan melaporkan keuangan kas kelas & seko
 ## 🛠️ Tech Stack
 
 - **Backend:** PHP 8.x + Laravel
-- **Frontend:** Blade + Tailwind CSS + Alpine.js
-- **Database:** MySQL / MariaDB
+- **Frontend:** Blade + Tailwind CSS v4 + Alpine.js (bundled via Vite)
+- **Database:** MySQL / MariaDB (minimal MySQL 8.0 / MariaDB 10.2 untuk dukungan window function laporan)
 - **Export:** Maatwebsite Excel + Barryvdh DomPDF
-- **Charts:** Chart.js (CDN)
+- **Charts:** Chart.js (bundled via npm + Vite)
 
 ---
 
@@ -343,6 +343,56 @@ Setelah melakukan seeding data, gunakan akun berikut untuk login:
 | **Admin**           | Full access: master data, tagihan, pembayaran, pengeluaran, laporan, export |
 | **Bendahara Kelas** | Kelola tagihan & kas di kelas yang ditugaskan                               |
 | **Siswa**           | Lihat tagihan pribadi, upload bukti bayar, lihat transparansi kas           |
+
+---
+
+## 🐳 Menjalankan dengan Docker
+
+Aplikasi ini telah dilengkapi dengan kontainerisasi Docker (`Dockerfile` PHP 8.3-FPM, Nginx, dan MariaDB 11.4).
+
+### Langkah Menjalankan Docker:
+
+1. **Salin environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+   Pastikan konfigurasi database di `.env` mengarah ke container:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=mariadb
+   DB_PORT=3306
+   DB_DATABASE=db_uang_kas_sekolah
+   DB_USERNAME=kas_user
+   DB_PASSWORD=password
+   ```
+
+2. **Jalankan container dengan Docker Compose:**
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. **Inisialisasi aplikasi di dalam container:**
+   ```bash
+   docker compose exec app composer install
+   docker compose exec app php artisan key:generate
+   docker compose exec app php artisan migrate --seed
+   docker compose exec app php artisan storage:link
+   ```
+
+4. **Buka aplikasi di browser:**
+   Akses **http://localhost:8000** (atau port yang didefinisikan pada `APP_PORT`).
+
+---
+
+## 🔄 Continuous Integration (CI)
+
+Proyek ini menggunakan **GitHub Actions** (`.github/workflows/tests.yml`) untuk memvalidasi setiap push dan pull request pada branch utama:
+- Setup PHP 8.3 beserta ekstensi yang dibutuhkan
+- Caching dependensi Composer
+- Validasi styling kode (`vendor/bin/pint --test`)
+- Pengujian unit dan fitur otomatis (`php artisan test`) menggunakan SQLite in-memory
+- Pemasangan dependensi npm dan kompilasi aset Vite (`npm ci && npm run build`)
+
 
 ---
 

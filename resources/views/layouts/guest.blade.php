@@ -12,13 +12,6 @@
 <body class="bg-gradient-to-br from-indigo-100 via-white to-emerald-50 min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-md">
-        {{-- Brand --}}
-        <div class="text-center mb-8">
-            <span class="text-5xl">💰</span>
-            <h1 class="mt-3 text-2xl font-bold text-gray-800">Sistem Kas Sekolah</h1>
-            <p class="text-sm text-gray-500 mt-1">Manajemen Keuangan Kelas & Sekolah</p>
-        </div>
-
         {{-- Card --}}
         <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
             @yield('content')

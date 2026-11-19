@@ -143,7 +143,11 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-center">
-                                    @if($trx->type === 'in')
+                                    @if($trx->isVoided())
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                                            🚫 VOID
+                                        </span>
+                                    @elseif($trx->type === 'in')
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                                             ＋ Pemasukan
                                         </span>
@@ -153,8 +157,8 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td class="px-6 py-4 text-right font-black {{ $trx->type === 'in' ? 'text-emerald-600' : 'text-rose-600' }}">
-                                    {{ $trx->type === 'in' ? '+' : '-' }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
+                                <td class="px-6 py-4 text-right font-black {{ $trx->isVoided() ? 'line-through text-gray-400' : ($trx->type === 'in' ? 'text-emerald-600' : 'text-rose-600') }}">
+                                    {{ $trx->isVoided() ? '' : ($trx->type === 'in' ? '+' : '-') }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     {{-- ponytail: protect student bank receipts while keeping operational expense invoices publicly transparent --}}
@@ -172,7 +176,7 @@
                                     @elseif($trx->proof_file)
                                         @php
                                             $ext = strtolower(pathinfo($trx->proof_file, PATHINFO_EXTENSION));
-                                            $fileUrl = asset('storage/' . $trx->proof_file);
+                                            $fileUrl = route('transactions.proof', $trx);
                                             $isPdf = $ext === 'pdf';
                                         @endphp
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,9 +40,14 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
+            AuditLog::record('auth.login_succeeded', Auth::user());
 
             return redirect()->intended($this->redirectPath());
         }
+
+        AuditLog::record('auth.login_failed', null, [
+            'identifier' => $loginInput,
+        ]);
 
         return back()->withErrors([
             'login' => 'Email/NISN atau password salah.',
@@ -52,6 +58,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        AuditLog::record('auth.logout', $request->user());
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -105,6 +112,8 @@ class AuthController extends Controller
                     'remember_token' => Str::random(60),
                 ])->save();
 
+                AuditLog::record('auth.password_reset', $user);
+
                 event(new PasswordReset($user));
             }
         );
@@ -135,9 +144,18 @@ class AuthController extends Controller
             'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
         ]);
 
-        $request->user()->update([
+        $user = $request->user();
+        $wasForced = (bool) $user->must_change_password;
+
+        $user->update([
             'password' => Hash::make($request->password),
+            'must_change_password' => false,
         ]);
+        AuditLog::record('auth.password_changed', $user, ['forced' => $wasForced]);
+
+        if ($wasForced) {
+            return redirect($this->redirectPath())->with('success', 'Password Anda berhasil diperbarui!');
+        }
 
         return back()->with('success', 'Password Anda berhasil diperbarui!');
     }

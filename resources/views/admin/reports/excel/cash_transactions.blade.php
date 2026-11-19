@@ -44,10 +44,10 @@
             @php $trx = $row['model']; @endphp
             <tr>
                 <td style="border: 1px solid #ddd;">{{ $trx->transaction_date->format('d/m/Y') }}</td>
-                <td style="border: 1px solid #ddd;">{{ $trx->transaction_number }}</td>
-                <td style="border: 1px solid #ddd;">{{ $trx->category->name }}</td>
-                <td style="border: 1px solid #ddd;">{{ $trx->schoolClass ? $trx->schoolClass->class_name : 'Kas Umum' }}</td>
-                <td style="border: 1px solid #ddd;">{{ $trx->title }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($trx->transaction_number) }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($trx->category->name) }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($trx->schoolClass ? $trx->schoolClass->class_name : 'Kas Umum') }}</td>
+                <td style="border: 1px solid #ddd;">{{ \App\Helpers\SpreadsheetHelper::sanitize($trx->title) }}</td>
                 <td style="border: 1px solid #ddd; text-align: right;">{{ $trx->type === 'in' ? $trx->amount : 0 }}</td>
                 <td style="border: 1px solid #ddd; text-align: right;">{{ $trx->type === 'out' ? $trx->amount : 0 }}</td>
                 <td style="border: 1px solid #ddd; text-align: right; font-weight: bold;">{{ $row['running_balance'] }}</td>

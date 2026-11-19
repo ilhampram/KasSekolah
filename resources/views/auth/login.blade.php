@@ -61,18 +61,5 @@
         </button>
     </form>
 
-    {{-- Demo Accounts --}}
-    <div class="mt-6 pt-5 border-t border-gray-100">
-        <p class="text-xs text-gray-400 text-center mb-2">Akun Demo (password: <code class="bg-gray-100 px-1 rounded">password</code>)</p>
-        <div class="grid grid-cols-2 gap-2 text-xs text-center">
-            <div class="bg-indigo-50 rounded-lg p-2">
-                <p class="font-medium text-indigo-700">Admin</p>
-                <p class="text-gray-500">admin@sekolah.test</p>
-            </div>
-            <div class="bg-emerald-50 rounded-lg p-2">
-                <p class="font-medium text-emerald-700">Siswa</p>
-                <p class="text-gray-500">andi@siswa.test</p>
-            </div>
-        </div>
-    </div>
+
 @endsection

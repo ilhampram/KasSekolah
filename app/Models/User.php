@@ -24,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'must_change_password',
         'role',
         'class_id',
         'nisn',
@@ -49,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -76,14 +78,6 @@ class User extends Authenticatable
     public function verifiedPayments(): HasMany
     {
         return $this->hasMany(Payment::class, 'verified_by');
-    }
-
-    /**
-     * Cash expenses created by this user.
-     */
-    public function cashExpenses(): HasMany
-    {
-        return $this->hasMany(CashExpense::class, 'created_by');
     }
 
     // ─── Helpers ──────────────────────────────────────────────

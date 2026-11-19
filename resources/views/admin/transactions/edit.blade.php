@@ -113,7 +113,7 @@
                     @if($transaction->proof_file)
                         <div class="mb-2 text-xs text-gray-500 flex items-center gap-2">
                             <span>File saat ini:</span>
-                            <a href="{{ asset('storage/' . $transaction->proof_file) }}" target="_blank" class="text-indigo-600 underline">Lihat Lampiran</a>
+                            <a href="{{ route('transactions.proof', $transaction) }}" target="_blank" class="text-indigo-600 underline">Lihat Lampiran</a>
                         </div>
                     @endif
                     <input type="file" id="proof_file" name="proof_file" accept=".jpg,.jpeg,.png,.pdf"

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Helpers\Terbilang;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDuesPaymentRequest;
+use App\Models\AuditLog;
 use App\Models\CashBill;
 use App\Models\CashTransaction;
 use App\Models\Payment;
@@ -14,6 +15,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class DuesPaymentController extends Controller
 {
@@ -130,14 +132,24 @@ class DuesPaymentController extends Controller
     public function store(StoreDuesPaymentRequest $request)
     {
         return DB::transaction(function () use ($request) {
-            $bill = CashBill::with(['schoolClass', 'category'])->findOrFail($request->cash_bill_id);
-            $student = User::where('role', 'siswa')->findOrFail($request->student_id);
+            $bill = CashBill::with(['schoolClass', 'category'])->lockForUpdate()->findOrFail($request->cash_bill_id);
+            $student = User::where('role', 'siswa')->lockForUpdate()->findOrFail($request->student_id);
+
+            if ($student->class_id !== $bill->class_id) {
+                return back()->withInput()->with('error', 'Siswa yang dipilih tidak terdaftar di kelas tagihan ini.');
+            }
 
             if (Auth::user()->isBendaharaKelas()) {
-                if ($bill->class_id !== Auth::user()->class_id || $student->class_id !== Auth::user()->class_id) {
+                if ($bill->class_id !== Auth::user()->class_id) {
                     abort(403, 'Bendahara kelas hanya dapat mencatat pembayaran untuk kelasnya sendiri.');
                 }
             }
+
+            // Lock existing payments to prevent concurrent submission race conditions
+            Payment::where('cash_bill_id', $bill->id)
+                ->where('student_id', $student->id)
+                ->lockForUpdate()
+                ->get();
 
             // Calculate remaining balance
             $statusInfo = $bill->studentPaymentStatus($student->id);
@@ -157,7 +169,7 @@ class DuesPaymentController extends Controller
 
             $proofPath = null;
             if ($request->hasFile('proof_file')) {
-                $proofPath = $request->file('proof_file')->store('payments', 'public');
+                $proofPath = $request->file('proof_file')->store('payments', 'local');
             }
 
             $receiptNumber = Payment::generateReceiptNumber();
@@ -174,6 +186,13 @@ class DuesPaymentController extends Controller
                 'proof_file' => $proofPath,
                 'notes' => $request->notes,
                 'verified_by' => Auth::id(),
+            ]);
+            AuditLog::record('payment.recorded', $payment, [
+                'receipt_number' => $payment->receipt_number,
+                'student_id' => $payment->student_id,
+                'cash_bill_id' => $payment->cash_bill_id,
+                'amount' => $payment->amount_paid,
+                'status' => $payment->status,
             ]);
 
             // 2. Automatically accumulate into cash_transactions
@@ -198,9 +217,7 @@ class DuesPaymentController extends Controller
 
     public function verify(Payment $payment)
     {
-        if (Auth::user()->isBendaharaKelas() && $payment->cashBill->class_id !== Auth::user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke pembayaran kelas lain.');
-        }
+        Gate::authorize('verify', $payment);
 
         if ($payment->status === 'verified') {
             return back()->with('info', 'Pembayaran ini sudah terverifikasi sebelumnya.');
@@ -216,6 +233,12 @@ class DuesPaymentController extends Controller
             $payment->status = 'verified';
             $payment->verified_by = Auth::id();
             $payment->save();
+            AuditLog::record('payment.verified', $payment, [
+                'receipt_number' => $payment->receipt_number,
+                'student_id' => $payment->student_id,
+                'amount' => $payment->amount_paid,
+                'previous_status' => 'pending',
+            ]);
 
             // Check if cash_transaction already exists, else create it
             if (! $payment->cashTransaction) {
@@ -240,9 +263,7 @@ class DuesPaymentController extends Controller
 
     public function reject(Request $request, Payment $payment)
     {
-        if (Auth::user()->isBendaharaKelas() && $payment->cashBill->class_id !== Auth::user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke pembayaran kelas lain.');
-        }
+        Gate::authorize('verify', $payment);
 
         // ponytail: implement formal financial void/refund transaction if historical receipts require reversal
         if ($payment->status !== 'pending') {
@@ -253,6 +274,12 @@ class DuesPaymentController extends Controller
             $payment->status = 'rejected';
             $payment->notes = ($payment->notes ? $payment->notes."\n" : '').'Alasan Ditolak: '.$request->input('reason', 'Bukti tidak valid');
             $payment->save();
+            AuditLog::record('payment.rejected', $payment, [
+                'receipt_number' => $payment->receipt_number,
+                'student_id' => $payment->student_id,
+                'amount' => $payment->amount_paid,
+                'reason' => $request->input('reason', 'Bukti tidak valid'),
+            ]);
 
             // Delete associated cash transaction if any
             if ($payment->cashTransaction) {
@@ -270,9 +297,7 @@ class DuesPaymentController extends Controller
 
     public function receipt(Payment $payment)
     {
-        if (Auth::user()->isBendaharaKelas() && $payment->cashBill->class_id !== Auth::user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke kwitansi pembayaran kelas lain.');
-        }
+        Gate::authorize('receipt', $payment);
 
         $payment->load(['cashBill.schoolClass', 'cashBill.category', 'student', 'verifier']);
 
@@ -287,9 +312,7 @@ class DuesPaymentController extends Controller
 
     public function receiptPdf(Payment $payment)
     {
-        if (Auth::user()->isBendaharaKelas() && $payment->cashBill->class_id !== Auth::user()->class_id) {
-            abort(403, 'Anda tidak memiliki akses ke kwitansi pembayaran kelas lain.');
-        }
+        Gate::authorize('receipt', $payment);
 
         $payment->load(['cashBill.schoolClass', 'cashBill.category', 'student', 'verifier']);
         $bill = $payment->cashBill;
@@ -319,7 +342,13 @@ class DuesPaymentController extends Controller
             return response()->json(['error' => 'Bill not found'], 404);
         }
 
-        if (Auth::user()->isBendaharaKelas() && $bill->class_id !== Auth::user()->class_id) {
+        $student = User::where('role', 'siswa')->find($studentId);
+        if (! $student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+
+        if (Auth::user()->isBendaharaKelas()
+            && ($bill->class_id !== Auth::user()->class_id || $student->class_id !== $bill->class_id)) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 

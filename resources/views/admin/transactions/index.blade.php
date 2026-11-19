@@ -139,7 +139,11 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4">
-                                @if($trx->type === 'in')
+                                @if($trx->isVoided())
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                                        🚫 VOID
+                                    </span>
+                                @elseif($trx->type === 'in')
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                                         ＋ Pemasukan
                                     </span>
@@ -149,12 +153,12 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 text-right font-bold {{ $trx->type === 'in' ? 'text-emerald-600' : 'text-rose-600' }}">
-                                {{ $trx->type === 'in' ? '+' : '-' }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
+                            <td class="px-6 py-4 text-right font-bold {{ $trx->isVoided() ? 'line-through text-gray-400' : ($trx->type === 'in' ? 'text-emerald-600' : 'text-rose-600') }}">
+                                {{ $trx->isVoided() ? '' : ($trx->type === 'in' ? '+' : '-') }} Rp {{ number_format($trx->amount, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if($trx->proof_file)
-                                    <a href="{{ asset('storage/' . $trx->proof_file) }}" target="_blank"
+                                    <a href="{{ $trx->payment_id ? route('payments.proof', $trx->payment_id) : route('transactions.proof', $trx) }}" target="_blank"
                                        class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md transition"
                                        title="Lihat Bukti Transaksi">
                                         📎 Bukti
@@ -171,22 +175,27 @@
                                         👁️ Detail
                                     </a>
 
-                                    @if(! $trx->payment_id)
-                                        <a href="{{ route('admin.transactions.edit', $trx) }}"
-                                           class="px-2.5 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition"
-                                           title="Edit">
-                                            ✏️
-                                        </a>
+                                    @if(! $trx->payment_id && ! $trx->isVoided())
+                                        @can('update', $trx)
+                                            <a href="{{ route('admin.transactions.edit', $trx) }}"
+                                               class="px-2.5 py-1.5 text-xs bg-amber-50 text-amber-700 font-medium rounded-md hover:bg-amber-100 transition"
+                                               title="Edit">
+                                                ✏️
+                                            </a>
+                                        @endcan
 
-                                        <form method="POST" action="{{ route('admin.transactions.destroy', $trx) }}"
-                                              onsubmit="return confirm('Hapus transaksi {{ $trx->transaction_number }}?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="px-2.5 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition"
-                                                    title="Hapus">
-                                                🗑️
-                                            </button>
-                                        </form>
+                                        @can('delete', $trx)
+                                            <form method="POST" action="{{ route('admin.transactions.destroy', $trx) }}"
+                                                  onsubmit="const reason = prompt('Masukkan alasan pembatalan (void) transaksi {{ $trx->transaction_number }}:'); if (!reason) return false; this.querySelector('input[name=void_reason]').value = reason; return true;">
+                                                @csrf @method('DELETE')
+                                                <input type="hidden" name="void_reason" value="">
+                                                <button type="submit"
+                                                        class="px-2.5 py-1.5 text-xs bg-red-50 text-red-600 font-medium rounded-md hover:bg-red-100 transition"
+                                                        title="Batalkan (Void) Transaksi">
+                                                    🚫 Void
+                                                </button>
+                                            </form>
+                                        @endcan
                                     @endif
                                 </div>
                             </td>

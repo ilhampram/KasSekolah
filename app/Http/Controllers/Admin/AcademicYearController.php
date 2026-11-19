@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreAcademicYearRequest;
 use App\Http\Requests\Admin\UpdateAcademicYearRequest;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use Illuminate\Http\Request;
 
 class AcademicYearController extends Controller
@@ -17,7 +18,7 @@ class AcademicYearController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('year', 'like', "%{$search}%")
-                  ->orWhere('semester', 'like', "%{$search}%");
+                    ->orWhere('semester', 'like', "%{$search}%");
             });
         }
 
@@ -26,9 +27,9 @@ class AcademicYearController extends Controller
         }
 
         $academicYears = $query->orderByDesc('year')
-                               ->orderBy('semester')
-                               ->paginate(10)
-                               ->withQueryString();
+            ->orderBy('semester')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.academic-years.index', compact('academicYears'));
     }
@@ -51,7 +52,7 @@ class AcademicYearController extends Controller
         AcademicYear::create($data);
 
         return redirect()->route('admin.academic-years.index')
-                         ->with('success', 'Tahun ajaran berhasil ditambahkan.');
+            ->with('success', 'Tahun ajaran berhasil ditambahkan.');
     }
 
     public function edit(AcademicYear $academicYear)
@@ -72,7 +73,7 @@ class AcademicYearController extends Controller
         $academicYear->update($data);
 
         return redirect()->route('admin.academic-years.index')
-                         ->with('success', 'Tahun ajaran berhasil diperbarui.');
+            ->with('success', 'Tahun ajaran berhasil diperbarui.');
     }
 
     public function activate(AcademicYear $academicYear)
@@ -80,7 +81,7 @@ class AcademicYearController extends Controller
         $academicYear->activate();
 
         return redirect()->route('admin.academic-years.index')
-                         ->with('success', "Tahun ajaran {$academicYear->full_name} berhasil diaktifkan.");
+            ->with('success', "Tahun ajaran {$academicYear->full_name} berhasil diaktifkan.");
     }
 
     public function destroy(AcademicYear $academicYear)
@@ -93,9 +94,14 @@ class AcademicYearController extends Controller
             return back()->with('error', 'Tahun ajaran tidak dapat dihapus karena memiliki kelas terkait.');
         }
 
+        AuditLog::record('academic_year.deleted', $academicYear, [
+            'year' => $academicYear->year,
+            'semester' => $academicYear->semester,
+        ]);
+
         $academicYear->delete();
 
         return redirect()->route('admin.academic-years.index')
-                         ->with('success', 'Tahun ajaran berhasil dihapus.');
+            ->with('success', 'Tahun ajaran berhasil dihapus.');
     }
 }

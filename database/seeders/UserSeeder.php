@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\SchoolClass;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -13,52 +14,55 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        $class1 = SchoolClass::where('class_name', 'X IPA 1')->first();
+        $class2 = SchoolClass::where('class_name', 'X IPA 2')->first();
+
         // ── Admin (Bendahara Sekolah) ─────────────────────────────
         User::create([
-            'name'     => 'Admin Bendahara',
-            'email'    => 'admin@sekolah.test',
+            'name' => 'Admin Bendahara',
+            'email' => 'admin@sekolah.test',
             'password' => Hash::make('password'),
-            'role'     => 'admin',
+            'role' => 'admin',
             'class_id' => null,
-            'nisn'     => null,
+            'nisn' => null,
         ]);
 
         // ── Bendahara Kelas ───────────────────────────────────────
         User::create([
-            'name'     => 'Rina Wulandari',
-            'email'    => 'bendahara.xipa1@sekolah.test',
+            'name' => 'Rina Wulandari',
+            'email' => 'bendahara.xipa1@sekolah.test',
             'password' => Hash::make('password'),
-            'role'     => 'bendahara_kelas',
-            'class_id' => 1, // X IPA 1
-            'nisn'     => null,
+            'role' => 'bendahara_kelas',
+            'class_id' => $class1?->id,
+            'nisn' => null,
         ]);
 
         User::create([
-            'name'     => 'Dani Pratama',
-            'email'    => 'bendahara.xipa2@sekolah.test',
+            'name' => 'Dani Pratama',
+            'email' => 'bendahara.xipa2@sekolah.test',
             'password' => Hash::make('password'),
-            'role'     => 'bendahara_kelas',
-            'class_id' => 2, // X IPA 2
-            'nisn'     => null,
+            'role' => 'bendahara_kelas',
+            'class_id' => $class2?->id,
+            'nisn' => null,
         ]);
 
         // ── Siswa ─────────────────────────────────────────────────
         $students = [
-            ['name' => 'Andi Saputra',     'email' => 'andi@siswa.test',     'nisn' => '0012345001', 'class_id' => 1],
-            ['name' => 'Budi Raharjo',     'email' => 'budi@siswa.test',     'nisn' => '0012345002', 'class_id' => 1],
-            ['name' => 'Citra Dewi',       'email' => 'citra@siswa.test',    'nisn' => '0012345003', 'class_id' => 1],
-            ['name' => 'Dina Maharani',    'email' => 'dina@siswa.test',     'nisn' => '0012345004', 'class_id' => 2],
-            ['name' => 'Eka Putra',        'email' => 'eka@siswa.test',      'nisn' => '0012345005', 'class_id' => 2],
+            ['name' => 'Andi Saputra',     'email' => 'andi@siswa.test',     'nisn' => '0012345001', 'class_id' => $class1?->id],
+            ['name' => 'Budi Raharjo',     'email' => 'budi@siswa.test',     'nisn' => '0012345002', 'class_id' => $class1?->id],
+            ['name' => 'Citra Dewi',       'email' => 'citra@siswa.test',    'nisn' => '0012345003', 'class_id' => $class1?->id],
+            ['name' => 'Dina Maharani',    'email' => 'dina@siswa.test',     'nisn' => '0012345004', 'class_id' => $class2?->id],
+            ['name' => 'Eka Putra',        'email' => 'eka@siswa.test',      'nisn' => '0012345005', 'class_id' => $class2?->id],
         ];
 
         foreach ($students as $student) {
             User::create([
-                'name'     => $student['name'],
-                'email'    => $student['email'],
+                'name' => $student['name'],
+                'email' => $student['email'],
                 'password' => Hash::make('password'),
-                'role'     => 'siswa',
+                'role' => 'siswa',
                 'class_id' => $student['class_id'],
-                'nisn'     => $student['nisn'],
+                'nisn' => $student['nisn'],
             ]);
         }
     }

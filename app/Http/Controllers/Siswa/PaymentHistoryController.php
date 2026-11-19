@@ -9,6 +9,7 @@ use App\Models\Payment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class PaymentHistoryController extends Controller
@@ -109,41 +110,52 @@ class PaymentHistoryController extends Controller
             'proof_file.max' => 'Ukuran bukti pembayaran maksimal 5MB.',
         ]);
 
-        $bill = CashBill::where('class_id', $user->class_id)->findOrFail($request->cash_bill_id);
-        $statusInfo = $bill->studentPaymentStatus($user->id);
+        return DB::transaction(function () use ($request, $user) {
+            $bill = CashBill::where('class_id', $user->class_id)
+                ->lockForUpdate()
+                ->findOrFail($request->cash_bill_id);
 
-        $effectiveRemaining = max(0, $statusInfo['remaining'] - $statusInfo['pending']);
+            // Lock existing payments to prevent concurrent submission race conditions
+            Payment::where('cash_bill_id', $bill->id)
+                ->where('student_id', $user->id)
+                ->lockForUpdate()
+                ->get();
 
-        if ($effectiveRemaining <= 0) {
-            return back()->withInput()->with(
-                'error',
-                'Kamu sudah memiliki pengajuan pembayaran sebesar Rp '.number_format($statusInfo['pending'], 0, ',', '.')." yang sedang menunggu verifikasi bendahara untuk tagihan {$bill->title}."
-            );
-        }
+            $statusInfo = $bill->studentPaymentStatus($user->id);
 
-        if ((float) $request->amount_paid > $effectiveRemaining) {
-            return back()->withInput()->with(
-                'error',
-                'Nominal pembayaran (Rp '.number_format($request->amount_paid, 0, ',', '.').
-                ') melebihi sisa tagihan yang belum diajukan (Rp '.number_format($effectiveRemaining, 0, ',', '.').').'
-            );
-        }
+            $effectiveRemaining = max(0, $statusInfo['remaining'] - $statusInfo['pending']);
 
-        $proofPath = $request->file('proof_file')->store('payments', 'public');
+            if ($effectiveRemaining <= 0) {
+                return back()->withInput()->with(
+                    'error',
+                    'Kamu sudah memiliki pengajuan pembayaran sebesar Rp '.number_format($statusInfo['pending'], 0, ',', '.')." yang sedang menunggu verifikasi bendahara untuk tagihan {$bill->title}."
+                );
+            }
 
-        Payment::create([
-            'cash_bill_id' => $bill->id,
-            'student_id' => $user->id,
-            'amount_paid' => $request->amount_paid,
-            'payment_date' => $request->payment_date,
-            'status' => 'pending',
-            'payment_method' => 'transfer',
-            'proof_file' => $proofPath,
-            'notes' => $request->notes,
-        ]);
+            if ((float) $request->amount_paid > $effectiveRemaining) {
+                return back()->withInput()->with(
+                    'error',
+                    'Nominal pembayaran (Rp '.number_format($request->amount_paid, 0, ',', '.').
+                    ') melebihi sisa tagihan yang belum diajukan (Rp '.number_format($effectiveRemaining, 0, ',', '.').').'
+                );
+            }
 
-        return redirect()->route('siswa.payments.index')
-            ->with('success', 'Bukti pembayaran berhasil diunggah! Mohon menunggu verifikasi dari bendahara/admin.');
+            $proofPath = $request->file('proof_file')->store('payments', 'local');
+
+            Payment::create([
+                'cash_bill_id' => $bill->id,
+                'student_id' => $user->id,
+                'amount_paid' => $request->amount_paid,
+                'payment_date' => $request->payment_date,
+                'status' => 'pending',
+                'payment_method' => 'transfer',
+                'proof_file' => $proofPath,
+                'notes' => $request->notes,
+            ]);
+
+            return redirect()->route('siswa.payments.index')
+                ->with('success', 'Bukti pembayaran berhasil diunggah! Mohon menunggu verifikasi dari bendahara/admin.');
+        });
     }
 
     public function receipt(Payment $payment)

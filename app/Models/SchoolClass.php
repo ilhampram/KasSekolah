@@ -56,18 +56,18 @@ class SchoolClass extends Model
     }
 
     /**
-     * Cash expenses for this class.
-     */
-    public function cashExpenses(): HasMany
-    {
-        return $this->hasMany(CashExpense::class, 'class_id');
-    }
-
-    /**
      * Payments for this class (through cash bills).
      */
     public function payments(): HasManyThrough
     {
         return $this->hasManyThrough(Payment::class, CashBill::class, 'class_id', 'cash_bill_id');
+    }
+
+    /**
+     * Cash transactions for this class.
+     */
+    public function cashTransactions(): HasMany
+    {
+        return $this->hasMany(CashTransaction::class, 'class_id');
     }
 }

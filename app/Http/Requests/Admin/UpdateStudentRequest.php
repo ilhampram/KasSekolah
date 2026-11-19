@@ -17,9 +17,9 @@ class UpdateStudentRequest extends FormRequest
         $studentId = $this->route('student');
 
         return [
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($studentId)],
-            'nisn'     => ['required', 'string', 'max:20', Rule::unique('users', 'nisn')->ignore($studentId)],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($studentId)],
+            'nisn' => ['required', 'string', 'max:20', Rule::unique('users', 'nisn')->ignore($studentId)],
             'class_id' => ['required', 'exists:classes,id'],
         ];
     }
@@ -27,13 +27,13 @@ class UpdateStudentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required'     => 'Nama siswa wajib diisi.',
-            'email.required'    => 'Email wajib diisi.',
-            'email.unique'      => 'Email sudah terdaftar.',
-            'nisn.required'     => 'NISN wajib diisi.',
-            'nisn.unique'       => 'NISN sudah terdaftar.',
+            'name.required' => 'Nama siswa wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique' => 'Email sudah terdaftar.',
+            'nisn.required' => 'NISN wajib diisi.',
+            'nisn.unique' => 'NISN sudah terdaftar.',
             'class_id.required' => 'Kelas wajib dipilih.',
-            'class_id.exists'   => 'Kelas tidak valid.',
+            'class_id.exists' => 'Kelas tidak valid.',
         ];
     }
 }

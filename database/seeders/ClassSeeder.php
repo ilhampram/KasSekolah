@@ -21,7 +21,7 @@ class ClassSeeder extends Seeder
             ['class_name' => 'X IPS 1',  'academic_year_id' => $activeYear?->id, 'academic_year' => $activeYear?->year ?? '2026/2027', 'homeroom_teacher' => 'Ahmad Fauzi, M.Pd'],
             ['class_name' => 'XI IPA 1', 'academic_year_id' => $activeYear?->id, 'academic_year' => $activeYear?->year ?? '2026/2027', 'homeroom_teacher' => 'Dewi Lestari, S.Pd'],
             ['class_name' => 'XI IPS 1', 'academic_year_id' => $activeYear?->id, 'academic_year' => $activeYear?->year ?? '2026/2027', 'homeroom_teacher' => 'Rudi Hartono, S.Pd'],
-            ['class_name' => 'XII IPA 1','academic_year_id' => $activeYear?->id, 'academic_year' => $activeYear?->year ?? '2026/2027', 'homeroom_teacher' => 'Sri Wahyuni, M.Pd'],
+            ['class_name' => 'XII IPA 1', 'academic_year_id' => $activeYear?->id, 'academic_year' => $activeYear?->year ?? '2026/2027', 'homeroom_teacher' => 'Sri Wahyuni, M.Pd'],
         ];
 
         foreach ($classes as $class) {
