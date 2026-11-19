@@ -8,13 +8,15 @@ Aplikasi web untuk mencatat, mengelola, dan melaporkan keuangan kas kelas & seko
 
 | Fitur                     | Keterangan                                                                         |
 | ------------------------- | ---------------------------------------------------------------------------------- |
+| 🏫 Landing Page Sekolah   | Profil Sekolah Muhammadiyah Setiabudi Pamulang (TK-SD-SMP-SMA), peta & kontak      |
 | 📊 Dashboard Analytics    | KPI saldo, pemasukan/pengeluaran, grafik tren 6 bulan, perbandingan per kelas      |
 | 👥 Manajemen Master Data  | CRUD Siswa, Kelas, Tahun Ajaran, Kategori Kas                                      |
 | 💵 Tagihan & Pembayaran   | Buat tagihan per kelas, catat pembayaran tunai/transfer, verifikasi bukti bayar    |
-| 💸 Pencatatan Pengeluaran | Catat pengeluaran kas + upload nota/bukti                                          |
+| 💸 Pencatatan Pengeluaran | Catat pengeluaran kas + upload nota/bukti & pembatalan (void) berjejak audit      |
 | 📄 Laporan & Export       | Buku mutasi kas dengan saldo berjalan, rekap tunggakan — export ke **Excel & PDF** |
 | 📱 Portal Siswa           | Cek tagihan pribadi, upload bukti transfer, lihat transparansi kas kelas           |
-| 🔐 Keamanan               | Role-Based Access (Admin, Bendahara Kelas, Siswa), Policy/Gate, custom error pages |
+| 🛡️ Audit Log & Riwayat    | Pencatatan log aktivitas sensitif (reset password, void transaksi, dll.)          |
+| 🔐 Keamanan Terpadu       | Role-Based Access, private disk streaming untuk file bukti, wajib ganti password   |
 
 ---
 
@@ -329,7 +331,8 @@ Setelah melakukan seeding data, gunakan akun berikut untuk login:
 │   ├── layouts/            # Layout utama (sidebar, navbar)
 │   ├── admin/              # Views modul admin
 │   ├── siswa/              # Views modul siswa
-│   └── errors/             # Custom error pages (403, 404, 500)
+│   ├── errors/             # Custom error pages (403, 404, 500)
+│   └── landing.blade.php   # Landing page profil sekolah & peta
 ├── routes/web.php          # Semua route definitions
 └── .env                    # Konfigurasi environment
 ```
